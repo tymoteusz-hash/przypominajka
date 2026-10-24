@@ -23,14 +23,22 @@ import java.time.ZoneId
 data class TrainingSettings(
     val enabled: Boolean = false,
     val days: Set<DayOfWeek> = DEFAULT_DAYS,
+    /** Własna godzina w sobotę i niedzielę (gdy plan z Librusa nie ma tego dnia lekcji). */
+    val weekendTimes: Map<DayOfWeek, LocalTime> = WEEKEND.associateWith { DEFAULT_WEEKEND_TIME },
 ) {
+    fun weekendTime(day: DayOfWeek): LocalTime = weekendTimes[day] ?: DEFAULT_WEEKEND_TIME
+
     companion object {
         val DEFAULT_DAYS: Set<DayOfWeek> = setOf(DayOfWeek.MONDAY, DayOfWeek.WEDNESDAY, DayOfWeek.FRIDAY)
+        val WEEKEND: List<DayOfWeek> = listOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
+        val DEFAULT_WEEKEND_TIME: LocalTime = LocalTime.of(15, 0)
     }
 }
 
-/** Najbliższe przypomnienie o treningu: kiedy i czy to koniec lekcji z planu/ustawień, czy dzień bez szkoły. */
-data class TrainingTrigger(val at: LocalDateTime, val noSchool: Boolean)
+/** Najbliższe przypomnienie o treningu i skąd wzięła się godzina. */
+data class TrainingTrigger(val at: LocalDateTime, val source: Source) {
+    enum class Source { LESSONS, WEEKEND, NO_SCHOOL }
+}
 
 /**
  * Przypomnienie o treningu w chwili końca lekcji (plan z Librusa, a gdy go brak – godziny z Ustawień)
@@ -47,6 +55,11 @@ class TrainingReminder(private val context: Context, private val prefs: SharedPr
     fun toggleDay(day: DayOfWeek) {
         val days = _settings.value.days
         save(_settings.value.copy(days = if (day in days) days - day else days + day))
+    }
+
+    fun setWeekendTime(day: DayOfWeek, time: LocalTime) {
+        if (day !in TrainingSettings.WEEKEND) return
+        save(_settings.value.copy(weekendTimes = _settings.value.weekendTimes + (day to time)))
     }
 
     /** Planuje najbliższe przypomnienie (albo kasuje alarm, gdy wyłączone / brak dni). */
@@ -83,13 +96,18 @@ class TrainingReminder(private val context: Context, private val prefs: SharedPr
             ?.mapNotNull { it.toIntOrNull()?.takeIf { v -> v in 1..7 }?.let(DayOfWeek::of) }
             ?.toSet()
             ?: TrainingSettings.DEFAULT_DAYS
-        return TrainingSettings(enabled = prefs.getBoolean(KEY_ENABLED, false), days = days)
+        val weekendTimes = TrainingSettings.WEEKEND.associateWith { day ->
+            val minutes = prefs.getInt(timeKey(day), -1)
+            if (minutes in 0 until 24 * 60) LocalTime.of(minutes / 60, minutes % 60) else TrainingSettings.DEFAULT_WEEKEND_TIME
+        }
+        return TrainingSettings(enabled = prefs.getBoolean(KEY_ENABLED, false), days = days, weekendTimes = weekendTimes)
     }
 
     private fun save(settings: TrainingSettings) {
         prefs.edit {
             putBoolean(KEY_ENABLED, settings.enabled)
             putString(KEY_DAYS, settings.days.map { it.value }.sorted().joinToString(","))
+            settings.weekendTimes.forEach { (day, time) -> putInt(timeKey(day), time.hour * 60 + time.minute) }
         }
         _settings.value = settings
     }
@@ -99,9 +117,12 @@ class TrainingReminder(private val context: Context, private val prefs: SharedPr
         private const val KEY_ENABLED = "training_enabled"
         private const val KEY_DAYS = "training_days"
 
+        private fun timeKey(day: DayOfWeek) = "training_time_${day.value}"
+
         /**
          * Najbliższy koniec lekcji w wybrany dzień, późniejszy niż [now] (szukamy przez tydzień do przodu).
-         * W dzień bez lekcji (np. sobota) – o domyślnej godzinie końca lekcji.
+         * W sobotę i niedzielę bez lekcji – o godzinie ustawionej na weekend; w inny dzień bez lekcji
+         * (np. święto) – o domyślnej godzinie końca lekcji.
          */
         fun nextTrigger(settings: TrainingSettings, schoolTimes: SchoolTimes, now: LocalDateTime): TrainingTrigger? {
             if (!settings.enabled || settings.days.isEmpty()) return null
@@ -110,8 +131,13 @@ class TrainingReminder(private val context: Context, private val prefs: SharedPr
                 val date: LocalDate = today.plusDays(offset)
                 if (date.dayOfWeek !in settings.days) continue
                 val end: LocalTime? = schoolTimes.lessonsEnd(date)
-                val at = date.atTime(end ?: schoolTimes.defaultEnd)
-                if (at.isAfter(now)) return TrainingTrigger(at, noSchool = end == null)
+                val trigger = when {
+                    end != null -> TrainingTrigger(date.atTime(end), TrainingTrigger.Source.LESSONS)
+                    date.dayOfWeek in TrainingSettings.WEEKEND ->
+                        TrainingTrigger(date.atTime(settings.weekendTime(date.dayOfWeek)), TrainingTrigger.Source.WEEKEND)
+                    else -> TrainingTrigger(date.atTime(schoolTimes.defaultEnd), TrainingTrigger.Source.NO_SCHOOL)
+                }
+                if (trigger.at.isAfter(now)) return trigger
             }
             return null
         }

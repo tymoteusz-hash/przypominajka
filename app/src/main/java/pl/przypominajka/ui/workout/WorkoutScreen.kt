@@ -91,6 +91,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import pl.przypominajka.alarm.RestState
+import pl.przypominajka.alarm.TrainingSettings
+import pl.przypominajka.alarm.TrainingTrigger
 import pl.przypominajka.data.FolderColors
 import pl.przypominajka.data.WorkoutExercise
 import pl.przypominajka.data.WorkoutFolder
@@ -107,6 +109,7 @@ import pl.przypominajka.ui.components.PastelBadge
 import pl.przypominajka.ui.components.PrimaryButton
 import pl.przypominajka.ui.components.ProgressBar
 import pl.przypominajka.ui.components.ProgressRing
+import pl.przypominajka.ui.components.ReminderTimePickerDialog
 import pl.przypominajka.ui.components.RoundIconButton
 import pl.przypominajka.ui.components.ScreenHeader
 import pl.przypominajka.ui.components.appear
@@ -143,6 +146,7 @@ fun WorkoutScreen(
     var deleteFolder by remember { mutableStateOf(false) }
     var deletePlan by remember { mutableStateOf<WorkoutPlan?>(null) }
     var folderMenu by remember { mutableStateOf(false) }
+    var editingWeekendDay by rememberSaveable { mutableStateOf<DayOfWeek?>(null) }
     // Licznik wybuchów konfetti – rośnie, gdy któryś plan zostanie w całości odhaczony.
     var confetti by remember { mutableIntStateOf(0) }
 
@@ -221,6 +225,7 @@ fun WorkoutScreen(
                         training = training,
                         onEnabledChange = viewModel::setTrainingEnabled,
                         onToggleDay = viewModel::toggleTrainingDay,
+                        onEditWeekendTime = { editingWeekendDay = it },
                         modifier = Modifier
                             .padding(horizontal = 16.dp)
                             .appear(2),
@@ -297,6 +302,18 @@ fun WorkoutScreen(
     }
 
     // ---------------------------------------------------------------- okna dialogowe
+
+    editingWeekendDay?.let { day ->
+        ReminderTimePickerDialog(
+            initialTime = training.settings.weekendTime(day),
+            title = "Trening: ${DAY_NAMES[day.value - 1]}",
+            onDismiss = { editingWeekendDay = null },
+            onConfirm = { picked ->
+                viewModel.setTrainingWeekendTime(day, picked)
+                editingWeekendDay = null
+            },
+        )
+    }
 
     folderDialog?.let { request ->
         FolderDialog(
@@ -495,6 +512,7 @@ private fun TrainingReminderCard(
     training: TrainingUi,
     onEnabledChange: (Boolean) -> Unit,
     onToggleDay: (DayOfWeek) -> Unit,
+    onEditWeekendTime: (DayOfWeek) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val colors = MaterialTheme.colorScheme
@@ -554,6 +572,22 @@ private fun TrainingReminderCard(
                             }
                         }
                     }
+                    // Weekend: własna godzina zamiast końca lekcji.
+                    TrainingSettings.WEEKEND.filter { it in settings.days }.forEach { day ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = DAY_NAMES[day.value - 1].replaceFirstChar { it.uppercase() },
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Text(
+                                text = settings.weekendTime(day).format(TimeFormatter),
+                                style = MaterialTheme.typography.titleMedium,
+                                color = AppSurfaces.accent,
+                            )
+                            TextButton(onClick = { onEditWeekendTime(day) }) { Text("Zmień") }
+                        }
+                    }
                     Text(
                         text = trainingNextText(training),
                         style = MaterialTheme.typography.bodyMedium,
@@ -566,6 +600,7 @@ private fun TrainingReminderCard(
 }
 
 private val DAY_LETTERS = listOf("PN", "WT", "ŚR", "CZ", "PT", "SB", "ND")
+private val DAY_NAMES = listOf("poniedziałek", "wtorek", "środa", "czwartek", "piątek", "sobota", "niedziela")
 
 /** "Najbliższe: dziś o 14:35 – koniec lekcji". */
 private fun trainingNextText(training: TrainingUi): String {
@@ -578,7 +613,11 @@ private fun trainingNextText(training: TrainingUi): String {
         today.plusDays(1) -> "jutro"
         else -> "w ${dayAccusative(date)}"
     }
-    val reason = if (next.noSchool) "dzień bez lekcji, godzina domyślna" else "koniec lekcji"
+    val reason = when (next.source) {
+        TrainingTrigger.Source.LESSONS -> "koniec lekcji"
+        TrainingTrigger.Source.WEEKEND -> "Twoja godzina na weekend"
+        TrainingTrigger.Source.NO_SCHOOL -> "dzień bez lekcji, godzina domyślna"
+    }
     return "Najbliższe: $day o ${next.at.toLocalTime().format(TimeFormatter)} – $reason"
 }
 

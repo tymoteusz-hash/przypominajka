@@ -35,8 +35,8 @@ Całość kręci się wokół złotego dzwonu (jak emoji 🔔) – ten sam kszta
   **Przerwa między seriami**: 1:00 / 1:30 / 2:00 / 3:00, „+30 s”, „Stop”; koniec przerwy to dokładny alarm
   i powiadomienie z wibracją – działa też przy zablokowanym ekranie (`alarm/RestTimer.kt`).
   **Przypomnienie o treningu** (od 3.4): przełącznik i wybór dni PN–ND; powiadomienie „Czas na trening” przychodzi
-  dokładnie o końcu lekcji danego dnia (plan z Librusa, a gdy go brak – godziny z Ustawień; w dzień bez lekcji
-  o domyślnej godzinie 15:00). Jeden dokładny alarm na najbliższy termin, przeliczany po synchronizacji planu,
+  dokładnie o końcu lekcji danego dnia (plan z Librusa, a gdy go brak – godziny z Ustawień). Sobota i niedziela
+  mają własne godziny („Zmień” w karcie, domyślnie 15:00, od 3.5); inny dzień bez lekcji – domyślna godzina 15:00. Jeden dokładny alarm na najbliższy termin, przeliczany po synchronizacji planu,
   zmianie godzin lekcji i restarcie telefonu (`alarm/TrainingReminder.kt`).
 - **Quizy** – zestawy pytań do nauki: fiszki (obracana karta) i test ABCD (błędne odpowiedzi z innych
   pytań zestawu), wynik, „Powtórz trudne”, podpowiedzi „Przygotuj się” dla nadchodzących sprawdzianów.

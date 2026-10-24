@@ -21,6 +21,7 @@ import pl.przypominajka.data.WorkoutPlan
 import pl.przypominajka.data.WorkoutRepository
 import java.time.DayOfWeek
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 data class WorkoutPlanUi(
     val plan: WorkoutPlan,
@@ -78,6 +79,11 @@ class WorkoutViewModel(
 
     fun toggleTrainingDay(day: DayOfWeek) {
         trainingReminder.toggleDay(day)
+        viewModelScope.launch { reminderRepository.rescheduleTraining() }
+    }
+
+    fun setTrainingWeekendTime(day: DayOfWeek, time: LocalTime) {
+        trainingReminder.setWeekendTime(day, time)
         viewModelScope.launch { reminderRepository.rescheduleTraining() }
     }
 
