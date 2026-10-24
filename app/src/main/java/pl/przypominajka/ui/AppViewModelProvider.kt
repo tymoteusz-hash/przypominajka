@@ -35,7 +35,13 @@ object AppViewModelProvider {
             PlanViewModel(container.repository, container.librusSettings, container.librusSyncer)
         }
         initializer {
-            WorkoutViewModel(container().workoutRepository, container().restTimer)
+            val container = container()
+            WorkoutViewModel(
+                container.workoutRepository,
+                container.restTimer,
+                container.trainingReminder,
+                container.repository,
+            )
         }
         initializer {
             QuizListViewModel(container().quizRepository, container().repository)

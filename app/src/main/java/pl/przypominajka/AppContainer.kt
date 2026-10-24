@@ -7,6 +7,7 @@ import pl.przypominajka.ai.QuizGenerator
 import pl.przypominajka.alarm.NotificationHelper
 import pl.przypominajka.alarm.ReminderScheduler
 import pl.przypominajka.alarm.RestTimer
+import pl.przypominajka.alarm.TrainingReminder
 import pl.przypominajka.data.AppDatabase
 import pl.przypominajka.data.DismissedExternalIds
 import pl.przypominajka.data.QuizRepository
@@ -44,8 +45,12 @@ class AppContainer(context: Context) {
     val bellSound: BellSound by lazy { BellSound(appContext, appearancePrefs) }
 
     val repository: ReminderRepository by lazy {
-        ReminderRepository(database, scheduler, notificationHelper, DismissedExternalIds(preferences), schoolPrefs)
+        ReminderRepository(
+            database, scheduler, notificationHelper, DismissedExternalIds(preferences), schoolPrefs, trainingReminder,
+        )
     }
+
+    val trainingReminder: TrainingReminder by lazy { TrainingReminder(appContext, preferences) }
 
     val quizRepository: QuizRepository by lazy { QuizRepository(database) }
 

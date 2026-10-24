@@ -75,6 +75,11 @@
                 android:resource="@xml/today_widget_info" />
         </receiver>
 
+        <!-- Przypomnienie o treningu na koniec lekcji. -->
+        <receiver
+            android:name=".alarm.TrainingReminderReceiver"
+            android:exported="false" />
+
         <!-- Wywoływany przez AlarmManager o zaplanowanej godzinie. -->
         <receiver
             android:name=".alarm.AlarmReceiver"

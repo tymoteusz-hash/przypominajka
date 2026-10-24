@@ -47,6 +47,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.FitnessCenter
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,6 +61,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -112,7 +114,10 @@ import pl.przypominajka.ui.components.floating
 import pl.przypominajka.ui.components.pressScale
 import pl.przypominajka.ui.theme.AppSurfaces
 import pl.przypominajka.ui.theme.Pastel
+import pl.przypominajka.util.TimeFormatter
 import pl.przypominajka.util.pluralPl
+import java.time.DayOfWeek
+import java.time.LocalDate
 
 private data class FolderDialogRequest(val editing: WorkoutFolder?)
 private data class PlanDialogRequest(val editing: WorkoutPlan?)
@@ -126,6 +131,7 @@ fun WorkoutScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
+    val training by viewModel.training.collectAsStateWithLifecycle()
     val bottomBar = LocalBottomBarPadding.current
     val folder = state.selectedFolder
     val listState = rememberLazyListState()
@@ -207,6 +213,17 @@ fun WorkoutScreen(
                         onSelect = viewModel::selectFolder,
                         onAdd = { folderDialog = FolderDialogRequest(null) },
                         modifier = Modifier.appear(1),
+                    )
+                }
+
+                item(key = "training") {
+                    TrainingReminderCard(
+                        training = training,
+                        onEnabledChange = viewModel::setTrainingEnabled,
+                        onToggleDay = viewModel::toggleTrainingDay,
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .appear(2),
                     )
                 }
 
@@ -469,6 +486,105 @@ private fun Summary(folderName: String, done: Int, total: Int, modifier: Modifie
         }
     }
 }
+
+// ---------------------------------------------------------------- przypomnienie o treningu
+
+/** Przełącznik i dni tygodnia; przypomnienie przychodzi o godzinie końca lekcji. */
+@Composable
+private fun TrainingReminderCard(
+    training: TrainingUi,
+    onEnabledChange: (Boolean) -> Unit,
+    onToggleDay: (DayOfWeek) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = MaterialTheme.colorScheme
+    val settings = training.settings
+    AppCard(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                PastelBadge(icon = Icons.Rounded.NotificationsActive, pastel = Pastel.SAGE, size = 40.dp)
+                Spacer(Modifier.width(12.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("Przypomnienie o treningu", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        text = "Gdy kończą się lekcje",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colors.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                Switch(checked = settings.enabled, onCheckedChange = onEnabledChange)
+            }
+            AnimatedVisibility(
+                visible = settings.enabled,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        DayOfWeek.entries.forEach { day ->
+                            val selected = day in settings.days
+                            val container by animateColorAsState(
+                                if (selected) colors.primary else colors.surfaceVariant,
+                                label = "trainingDay",
+                            )
+                            val content by animateColorAsState(
+                                if (selected) colors.onPrimary else colors.onSurface,
+                                label = "trainingDayText",
+                            )
+                            val interaction = remember { MutableInteractionSource() }
+                            Surface(
+                                selected = selected,
+                                onClick = { onToggleDay(day) },
+                                shape = CircleShape,
+                                color = container,
+                                contentColor = content,
+                                interactionSource = interaction,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .pressScale(interaction, pressedScale = 0.9f),
+                            ) {
+                                Text(
+                                    text = DAY_LETTERS[day.value - 1],
+                                    style = MaterialTheme.typography.labelMedium,
+                                    textAlign = TextAlign.Center,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(vertical = 10.dp),
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = trainingNextText(training),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (settings.days.isEmpty()) colors.error else colors.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private val DAY_LETTERS = listOf("PN", "WT", "ŚR", "CZ", "PT", "SB", "ND")
+
+/** "Najbliższe: dziś o 14:35 – koniec lekcji". */
+private fun trainingNextText(training: TrainingUi): String {
+    if (training.settings.days.isEmpty()) return "Wybierz przynajmniej jeden dzień"
+    val next = training.next ?: return "Brak terminu w najbliższym tygodniu"
+    val date = next.at.toLocalDate()
+    val today = LocalDate.now()
+    val day = when (date) {
+        today -> "dziś"
+        today.plusDays(1) -> "jutro"
+        else -> "w ${dayAccusative(date)}"
+    }
+    val reason = if (next.noSchool) "dzień bez lekcji, godzina domyślna" else "koniec lekcji"
+    return "Najbliższe: $day o ${next.at.toLocalTime().format(TimeFormatter)} – $reason"
+}
+
+/** "w poniedziałek", "w środę", "w sobotę"… */
+private fun dayAccusative(date: LocalDate): String =
+    listOf("poniedziałek", "wtorek", "środę", "czwartek", "piątek", "sobotę", "niedzielę")[date.dayOfWeek.value - 1]
 
 // ---------------------------------------------------------------- przerwa
 

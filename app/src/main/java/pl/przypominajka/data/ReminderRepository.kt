@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.combine
 import pl.przypominajka.alarm.NotificationHelper
 import pl.przypominajka.alarm.ReminderSchedule
 import pl.przypominajka.alarm.ReminderScheduler
+import pl.przypominajka.alarm.TrainingReminder
 import pl.przypominajka.util.SchoolPrefs
 import java.time.LocalDate
 import java.time.LocalTime
@@ -31,6 +32,7 @@ class ReminderRepository(
     private val notifications: NotificationHelper,
     private val dismissedExternalIds: DismissedExternalIds,
     private val schoolPrefs: SchoolPrefs,
+    private val trainingReminder: TrainingReminder,
 ) {
     private val folderDao = db.folderDao()
     private val reminderDao = db.reminderDao()
@@ -88,7 +90,11 @@ class ReminderRepository(
         val schoolTimes = currentSchoolTimes()
         val now = System.currentTimeMillis()
         reminderDao.getActive().filter { it.afterSchool }.forEach { scheduleNext(it, now, schoolTimes) }
+        trainingReminder.reschedule(schoolTimes)
     }
+
+    /** Przypomnienie o treningu na koniec lekcji – po zmianie dni albo po jego wywołaniu. */
+    suspend fun rescheduleTraining() = trainingReminder.reschedule(currentSchoolTimes())
 
     // ---------------------------------------------------------------- przypomnienia
 
@@ -305,6 +311,7 @@ class ReminderRepository(
         reminderDao.getActive().forEach { reminder ->
             scheduleNext(reminder, now, schoolTimes)
         }
+        trainingReminder.reschedule(schoolTimes)
     }
 
     private suspend fun scheduleNext(reminder: Reminder, afterMillis: Long, schoolTimes: SchoolTimes? = null) {

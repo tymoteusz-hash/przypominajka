@@ -11,10 +11,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pl.przypominajka.alarm.RestState
 import pl.przypominajka.alarm.RestTimer
+import pl.przypominajka.alarm.TrainingReminder
+import pl.przypominajka.alarm.TrainingSettings
+import pl.przypominajka.alarm.TrainingTrigger
+import pl.przypominajka.data.ReminderRepository
 import pl.przypominajka.data.WorkoutExercise
 import pl.przypominajka.data.WorkoutFolder
 import pl.przypominajka.data.WorkoutPlan
 import pl.przypominajka.data.WorkoutRepository
+import java.time.DayOfWeek
+import java.time.LocalDateTime
 
 data class WorkoutPlanUi(
     val plan: WorkoutPlan,
@@ -45,10 +51,35 @@ val WORKOUT_PRESETS: List<Pair<String, List<String>>> = listOf(
 /** Długości przerwy do szybkiego wyboru (sekundy). */
 val REST_PRESETS: List<Int> = listOf(60, 90, 120, 180)
 
+/** Karta "Przypomnienie o treningu": ustawienia i najbliższy termin. */
+data class TrainingUi(
+    val settings: TrainingSettings = TrainingSettings(),
+    val next: TrainingTrigger? = null,
+)
+
 class WorkoutViewModel(
     private val repository: WorkoutRepository,
     private val restTimer: RestTimer,
+    private val trainingReminder: TrainingReminder,
+    private val reminderRepository: ReminderRepository,
 ) : ViewModel() {
+
+    val training: StateFlow<TrainingUi> = combine(
+        trainingReminder.settings,
+        reminderRepository.observeSchoolTimes(),
+    ) { settings, schoolTimes ->
+        TrainingUi(settings, TrainingReminder.nextTrigger(settings, schoolTimes, LocalDateTime.now()))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), TrainingUi(trainingReminder.settings.value))
+
+    fun setTrainingEnabled(enabled: Boolean) {
+        trainingReminder.setEnabled(enabled)
+        viewModelScope.launch { reminderRepository.rescheduleTraining() }
+    }
+
+    fun toggleTrainingDay(day: DayOfWeek) {
+        trainingReminder.toggleDay(day)
+        viewModelScope.launch { reminderRepository.rescheduleTraining() }
+    }
 
     /** Trwająca przerwa między seriami (null = brak). */
     val rest: StateFlow<RestState?> = restTimer.state

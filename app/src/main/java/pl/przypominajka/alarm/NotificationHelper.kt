@@ -107,6 +107,33 @@ class NotificationHelper(
         NotificationManagerCompat.from(context).notify(REST_NOTIFICATION_ID, notification)
     }
 
+    /** Koniec lekcji w dzień treningowy – dźwięk jak przy przypomnieniach, dotknięcie otwiera Trening. */
+    @SuppressLint("MissingPermission") // uprawnienie sprawdzane w canPostNotifications()
+    fun showTrainingReminder() {
+        if (!canPostNotifications()) return
+        val openWorkout = PendingIntent.getActivity(
+            context,
+            TRAINING_NOTIFICATION_ID,
+            Intent(context, MainActivity::class.java).apply {
+                data = Uri.parse("przypominajka://open/workout")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val tone = appearancePrefs.notificationTone
+        ensureReminderChannel(tone)
+        val notification = NotificationCompat.Builder(context, reminderChannelId(tone))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Czas na trening")
+            .setContentText("Pora poćwiczyć – dotknij, żeby otworzyć plan treningowy")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openWorkout)
+            .build()
+        NotificationManagerCompat.from(context).notify(TRAINING_NOTIFICATION_ID, notification)
+    }
+
     fun canPostNotifications(): Boolean {
         val permissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -190,5 +217,6 @@ class NotificationHelper(
         private const val REMINDER_CHANNEL_PREFIX = "reminders_"
         const val WORKOUT_CHANNEL_ID = "workout_rest"
         private const val REST_NOTIFICATION_ID = 7_001_001
+        private const val TRAINING_NOTIFICATION_ID = 7_002_001
     }
 }
