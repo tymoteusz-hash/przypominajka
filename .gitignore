@@ -1,0 +1,26 @@
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/app/build/
+/app/release/
+/captures/
+.externalNativeBuild/
+.cxx/
+.kotlin/
+
+# Klucz podpisu – nigdy w repozytorium.
+*.jks
+*.keystore
+/keystore.properties
+
+# Gotowe pliki i archiwa (APK trafia do GitHub Releases, nie do kodu).
+*.apk
+*.aab
+*.rar
+*.zip
+
+# Prywatne notatki dla Claude'a (dane o użytkowniku) – tylko na komputerze.
+/CLAUDE.md

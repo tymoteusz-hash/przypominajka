@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Przypominajka</string>
+
+    <!-- Skróty po przytrzymaniu ikony aplikacji. -->
+    <string name="shortcut_new_short">Nowe</string>
+    <string name="shortcut_new_long">Nowe przypomnienie</string>
+    <string name="shortcut_plan_short">Plan lekcji</string>
+    <string name="shortcut_plan_long">Plan lekcji</string>
+    <string name="shortcut_workout_short">Trening</string>
+    <string name="shortcut_workout_long">Plan treningowy</string>
+
+    <!-- Widżet na ekran główny. -->
+    <string name="widget_name">Przypominajka – dziś</string>
+    <string name="widget_description">Dzisiejsze przypomnienia i najbliższy sprawdzian</string>
+</resources>

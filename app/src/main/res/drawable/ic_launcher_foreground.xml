@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Złoty dzwon z ikony – te same ścieżki (układ 200 x 200) co dzwon rysowany w aplikacji (ui/components/Bell.kt). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.33"
+        android:scaleY="0.33"
+        android:translateX="21"
+        android:translateY="21">
+        <!-- uszko -->
+        <path
+            android:pathData="M100,12a12,12 0,1 1,0 24a12,12 0,1 1,0 -24z"
+            android:strokeWidth="9"
+            android:strokeColor="#FFC98A0A" />
+        <!-- korpus -->
+        <path
+            android:fillColor="#FFFFC62E"
+            android:pathData="M100,34C128,34 148,52 152,84C156,112 156,132 166,148C172,158 186,164 192,170L8,170C14,164 28,158 34,148C44,132 44,112 48,84C52,52 72,34 100,34Z" />
+        <!-- cień po prawej, przycięty do korpusu -->
+        <group>
+            <clip-path android:pathData="M100,34C128,34 148,52 152,84C156,112 156,132 166,148C172,158 186,164 192,170L8,170C14,164 28,158 34,148C44,132 44,112 48,84C52,52 72,34 100,34Z" />
+            <path
+                android:fillColor="#FFE9A80F"
+                android:pathData="M118,36C134,46 138,70 136,100C134,128 140,146 160,158L200,168L200,0Z" />
+        </group>
+        <!-- połysk -->
+        <path
+            android:fillColor="#FFFFF0A0"
+            android:pathData="M72,58C62,74 58,100 54,128C54,134 60,134 62,128C66,104 70,82 80,62C82,56 76,52 72,58Z" />
+        <!-- krawędź -->
+        <path
+            android:fillColor="#FFFFC62E"
+            android:pathData="M7,172a93,17 0,1 0,186 0a93,17 0,1 0,-186 0z" />
+        <path
+            android:pathData="M30,156Q52,146 94,148"
+            android:strokeWidth="6"
+            android:strokeColor="#FFFFF0A0"
+            android:strokeLineCap="round" />
+        <!-- otwór -->
+        <path
+            android:fillColor="#FF4A3127"
+            android:pathData="M22,170a78,11 0,1 0,156 0a78,11 0,1 0,-156 0z" />
+        <!-- serce -->
+        <path
+            android:fillColor="#FFE9A80F"
+            android:pathData="M89,174a11,11 0,1 0,22 0a11,11 0,1 0,-22 0z" />
+        <path
+            android:fillColor="#FFFFF0A0"
+            android:pathData="M92,170a4,4 0,1 0,8 0a4,4 0,1 0,-8 0z" />
+    </group>
+</vector>

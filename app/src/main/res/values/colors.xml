@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Tło okna przed załadowaniem Compose (jasny motyw) – kremowe, jak strony w aplikacji. -->
+    <color name="window_background">#FFF6F0E6</color>
+</resources>
