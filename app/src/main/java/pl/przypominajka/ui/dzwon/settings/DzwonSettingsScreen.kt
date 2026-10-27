@@ -49,6 +49,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pl.przypominajka.data.SchoolType
 import pl.przypominajka.ui.AppViewModelProvider
@@ -79,6 +81,7 @@ fun DzwonSettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshReminderReliability() }
     val c = LookTheme.dzwon
     var editingDay by rememberSaveable { mutableStateOf<DayOfWeek?>(null) }
 
@@ -155,6 +158,7 @@ fun DzwonSettingsScreen(
                     },
                 )
             }
+            ReminderReliabilitySection(viewModel)
             SchoolSections(state, viewModel::setLeadDays, viewModel::setIncludeTrips, { editingDay = it })
             DzwonCard(Modifier.fillMaxWidth(), onClick = onOpenFolders) {
                 DzwonListRow(
@@ -179,6 +183,27 @@ fun DzwonSettingsScreen(
             onDismiss = { editingDay = null },
             onConfirm = { viewModel.setWeekdayEnd(day, it); editingDay = null },
         )
+    }
+}
+
+@Composable
+private fun ReminderReliabilitySection(viewModel: SettingsViewModel) {
+    val status by viewModel.reliability.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    SettingsSection("Czy przypomnienia działają?", "Sprawdź zgody telefonu i wyślij próbne powiadomienie.") {
+        DzwonListRow(title = "Powiadomienia", subtitle = if (status.notificationsAllowed) "Dozwolone" else "Zablokowane")
+        DzwonTextButton("Ustawienia powiadomień", { viewModel.openNotificationSettings(context) })
+        DzwonDivider()
+        DzwonListRow(title = "Dokładne alarmy", subtitle = if (status.exactAlarmsAllowed) "Dozwolone" else "Brak zgody")
+        DzwonTextButton("Ustawienia dokładnych alarmów", { viewModel.openExactAlarmSettings(context) })
+        DzwonDivider()
+        DzwonListRow(title = "Kanał przypomnień", subtitle = if (status.channelBlocked) "Zablokowany" else "Włączony")
+        DzwonTextButton("Ustawienia kanału przypomnień", { viewModel.openReminderChannelSettings(context) })
+        DzwonPrimaryButton("Wyślij próbne powiadomienie za minutę", viewModel::scheduleTestNotification,
+            modifier = Modifier.fillMaxWidth(), enabled = status.exactAlarmsAllowed)
+        if (!status.exactAlarmsAllowed) Text("Aby wysłać próbę, włącz zgodę na dokładne alarmy.",
+            style = DzwonType.Caption, color = LookTheme.dzwon.ink2)
+        status.testMessage?.let { Text(it, style = DzwonType.Body, color = LookTheme.dzwon.ink) }
     }
 }
 

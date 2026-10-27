@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -63,6 +65,7 @@ import pl.przypominajka.data.ChecklistItem
 import pl.przypominajka.ui.AppViewModelProvider
 import pl.przypominajka.ui.checklist.ChecklistSummary
 import pl.przypominajka.ui.checklist.ChecklistViewModel
+import pl.przypominajka.ui.checklist.ChecklistQuickTime
 import pl.przypominajka.ui.look.LookTheme
 import pl.przypominajka.ui.tablica.components.BoardEmptyState
 import pl.przypominajka.ui.tablica.components.DashedTile
@@ -76,6 +79,7 @@ import pl.przypominajka.ui.tablica.components.RoundIconButton
 import pl.przypominajka.ui.tablica.components.RoundIconStyle
 import pl.przypominajka.ui.tablica.components.RoundIconToggle
 import pl.przypominajka.ui.tablica.components.TablicaDateTimePicker
+import pl.przypominajka.ui.tablica.components.TablicaChip
 import pl.przypominajka.ui.tablica.components.TablicaIcons
 import pl.przypominajka.ui.tablica.components.TablicaPermissionNotes
 import pl.przypominajka.ui.tablica.components.TablicaScreen
@@ -105,6 +109,7 @@ fun TablicaChecklistScreen(
     val loaded by viewModel.isLoaded.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val undo by viewModel.undoState.collectAsStateWithLifecycle()
+    val addedMessage by viewModel.addedMessage.collectAsStateWithLifecycle()
     val now by rememberMinuteClock()
     val nowMillis = now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
@@ -238,6 +243,8 @@ fun TablicaChecklistScreen(
             }
             item(key = "add", contentType = "add") {
                 AddNoteTile(
+                    addedMessage = addedMessage,
+                    onQuickTime = { draftTime = it.millis() },
                     timeError = draftTimeError,
                     draft = draft,
                     onDraftChange = { draft = it },
@@ -433,6 +440,8 @@ private fun TimeTag(remindAt: Long, done: Boolean, nowMillis: Long) {
 /** Ostatnia komórka siatki: pole „Nowa karteczka…”, przełącznik godziny i okrągłe „+” (Przyklej). */
 @Composable
 private fun AddNoteTile(
+    addedMessage: String?,
+    onQuickTime: (ChecklistQuickTime) -> Unit,
     draft: String,
     onDraftChange: (String) -> Unit,
     remindAt: Long?,
@@ -449,6 +458,7 @@ private fun AddNoteTile(
         contentPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (addedMessage != null) Text(text = addedMessage, style = TablicaType.Hint, color = colors.ink2)
         if (timeError) Text(text = "Wybierz przyszłą datę i godzinę.", style = TablicaType.Hint, color = PinInk)
         NoteTextField(
             value = draft,
@@ -493,6 +503,15 @@ private fun AddNoteTile(
                 enabled = draft.isNotBlank(),
                 iconSize = 22.dp,
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ChecklistQuickTime.values().forEach { choice ->
+                TablicaChip(text = choice.label, selected = false, onClick = { onQuickTime(choice) })
+            }
+            TablicaChip(text = "Wybierz…", selected = false, onClick = onPickTime)
         }
     }
 }

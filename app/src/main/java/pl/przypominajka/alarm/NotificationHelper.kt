@@ -2,6 +2,7 @@ package pl.przypominajka.alarm
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -192,6 +193,55 @@ class NotificationHelper(
         return permissionGranted && NotificationManagerCompat.from(context).areNotificationsEnabled()
     }
 
+    fun canScheduleExactAlarms(): Boolean =
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+
+    fun isReminderChannelBlocked(): Boolean {
+        ensureReminderChannel(appearancePrefs.notificationTone)
+        return manager.getNotificationChannel(currentReminderChannelId)?.importance == NotificationManager.IMPORTANCE_NONE
+    }
+
+    /** Osobny alarm próbny, bez wpisu w bazie przypomnień. */
+    @SuppressLint("ScheduleExactAlarm") // zgoda sprawdzana przed zaplanowaniem
+    fun scheduleTestNotification(): Long? {
+        if (!canScheduleExactAlarms()) return null
+        val triggerAt = System.currentTimeMillis() + 60_000L
+        val pendingIntent = PendingIntent.getBroadcast(
+            context,
+            TEST_NOTIFICATION_ID,
+            Intent(context, NotificationActionReceiver::class.java).apply {
+                action = NotificationActionReceiver.ACTION_TEST
+                data = Uri.parse("przypominajka://notification-test")
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return try {
+            context.getSystemService(AlarmManager::class.java).setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP, triggerAt, pendingIntent,
+            )
+            triggerAt
+        } catch (_: SecurityException) {
+            // Zgoda mogła zostać cofnięta tuż przed planowaniem.
+            null
+        }
+    }
+
+    @SuppressLint("MissingPermission") // uprawnienie sprawdzane w canPostNotifications()
+    fun showTestNotification() {
+        if (!canPostNotifications()) return
+        ensureReminderChannel(appearancePrefs.notificationTone)
+        val notification = NotificationCompat.Builder(context, currentReminderChannelId)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Próbne powiadomienie")
+            .setContentText("Przypomnienia działają – próba zakończona.")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .build()
+        NotificationManagerCompat.from(context).notify(TEST_NOTIFICATION_ID, notification)
+    }
+
     @SuppressLint("MissingPermission") // uprawnienie sprawdzane w canPostNotifications()
     fun show(reminder: Reminder, folderName: String) {
         if (!canPostNotifications()) return
@@ -238,6 +288,11 @@ class NotificationHelper(
                 "Za godzinę",
                 actionIntent(NotificationActionReceiver.ACTION_SNOOZE_HOUR, reminder.id),
             )
+            .addAction(
+                0,
+                "Na jutro",
+                actionIntent(NotificationActionReceiver.ACTION_SNOOZE_TOMORROW, reminder.id),
+            )
             .build()
 
         NotificationManagerCompat.from(context).notify(notificationId, notification)
@@ -269,6 +324,7 @@ class NotificationHelper(
         const val WORKOUT_CHANNEL_ID = "workout_rest"
         private const val REST_NOTIFICATION_ID = 7_001_001
         private const val TRAINING_NOTIFICATION_ID = 7_002_001
+        private const val TEST_NOTIFICATION_ID = 7_003_001
         private const val CHECKLIST_NOTIFICATION_BASE = 8_000_000
     }
 }

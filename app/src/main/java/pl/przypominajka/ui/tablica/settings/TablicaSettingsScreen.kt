@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pl.przypominajka.data.SchoolType
 import pl.przypominajka.ui.AppViewModelProvider
@@ -55,6 +57,7 @@ fun TablicaSettingsScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val colors = LookTheme.tablica
     val context = LocalContext.current
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshReminderReliability() }
     var editingDay by rememberSaveable { mutableStateOf<DayOfWeek?>(null) }
     val version = remember(context) {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull().orEmpty()
@@ -107,6 +110,7 @@ fun TablicaSettingsScreen(
                         }
                     }, modifier = Modifier.fillMaxWidth())
                 }
+                ReminderReliabilityNote(viewModel)
                 LeadDaysNote(state, viewModel)
                 SettingsNote("Koniec lekcji", colors.mint, 0.4f) {
                     Text(
@@ -146,6 +150,27 @@ fun TablicaSettingsScreen(
                 editingDay = null
             },
         )
+    }
+}
+
+@Composable
+private fun ReminderReliabilityNote(viewModel: SettingsViewModel) {
+    val status by viewModel.reliability.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    SettingsNote("Czy przypomnienia działają?", LookTheme.tablica.yellow, -0.3f) {
+        Text("Sprawdź zgody telefonu i wyślij próbne powiadomienie.", style = TablicaType.BodyLight)
+        NoteRow("Powiadomienia", subtitle = if (status.notificationsAllowed) "Dozwolone" else "Zablokowane")
+        InkTextButton("Ustawienia powiadomień", { viewModel.openNotificationSettings(context) }, modifier = Modifier.fillMaxWidth())
+        NoteDivider()
+        NoteRow("Dokładne alarmy", subtitle = if (status.exactAlarmsAllowed) "Dozwolone" else "Brak zgody")
+        InkTextButton("Ustawienia dokładnych alarmów", { viewModel.openExactAlarmSettings(context) }, modifier = Modifier.fillMaxWidth())
+        NoteDivider()
+        NoteRow("Kanał przypomnień", subtitle = if (status.channelBlocked) "Zablokowany" else "Włączony")
+        InkTextButton("Ustawienia kanału przypomnień", { viewModel.openReminderChannelSettings(context) }, modifier = Modifier.fillMaxWidth())
+        InkButton("Wyślij próbne powiadomienie za minutę", viewModel::scheduleTestNotification,
+            modifier = Modifier.fillMaxWidth(), enabled = status.exactAlarmsAllowed)
+        if (!status.exactAlarmsAllowed) Text("Aby wysłać próbę, włącz zgodę na dokładne alarmy.", style = TablicaType.Hint)
+        status.testMessage?.let { Text(it, style = TablicaType.BodyLight) }
     }
 }
 

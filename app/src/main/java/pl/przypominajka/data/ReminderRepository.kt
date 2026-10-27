@@ -10,6 +10,7 @@ import pl.przypominajka.alarm.TrainingReminder
 import pl.przypominajka.util.SchoolPrefs
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZonedDateTime
 
 /** Wynik scalenia wpisów z zewnętrznego źródła (Librus) z przypomnieniami w bazie. */
 data class ExternalSyncResult(
@@ -278,11 +279,18 @@ class ReminderRepository(
         scheduleNext(current, reference)
     }
 
-    /** "Przypomnij za 10 min". */
-    suspend fun snooze(id: Long, minutes: Long) {
+    /** Odłożenie o wybraną liczbę minut. */
+    suspend fun snooze(id: Long, minutes: Long) =
+        snoozeUntil(id, System.currentTimeMillis() + minutes * 60_000L)
+
+    /** Jutro o tej samej lokalnej godzinie, także przy zmianie czasu. */
+    suspend fun snoozeTomorrow(id: Long) =
+        snoozeUntil(id, ZonedDateTime.now().plusDays(1).toInstant().toEpochMilli())
+
+    private suspend fun snoozeUntil(id: Long, triggerAt: Long) {
         val reminder = reminderDao.getById(id) ?: return
         if (!reminder.enabled) return
-        reminderDao.snooze(id, System.currentTimeMillis() + minutes * 60_000L)
+        reminderDao.snooze(id, triggerAt)
         refreshAlarm(id)
     }
 

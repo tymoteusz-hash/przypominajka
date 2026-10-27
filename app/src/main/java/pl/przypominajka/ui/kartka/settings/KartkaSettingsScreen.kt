@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pl.przypominajka.data.SchoolType
 import pl.przypominajka.ui.AppViewModelProvider
@@ -81,6 +83,7 @@ fun KartkaSettingsScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { viewModel.refreshReminderReliability() }
     val c = LookTheme.kartka
     var editingDay by rememberSaveable { mutableStateOf<DayOfWeek?>(null) }
     val version = remember(context) {
@@ -148,6 +151,7 @@ fun KartkaSettingsScreen(
                         icon = KartkaIcons.External,
                     )
                 }
+                ReminderReliabilitySection(viewModel)
                 LeadDaysSection(state, viewModel::setLeadDays, viewModel::setIncludeTrips)
                 SettingsSection(
                     "Koniec lekcji",
@@ -182,6 +186,30 @@ fun KartkaSettingsScreen(
             onDismiss = { editingDay = null },
             onConfirm = { viewModel.setWeekdayEnd(day, it); editingDay = null },
         )
+    }
+}
+
+@Composable
+private fun ReminderReliabilitySection(viewModel: SettingsViewModel) {
+    val status by viewModel.reliability.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    SettingsSection("Czy przypomnienia działają?", "Sprawdź zgody telefonu i wyślij próbne powiadomienie.") {
+        Text("Powiadomienia: ${if (status.notificationsAllowed) "dozwolone" else "zablokowane"}",
+            style = KartkaType.RowTitle, color = LookTheme.kartka.ink)
+        KartkaTextButton("Ustawienia powiadomień", { viewModel.openNotificationSettings(context) })
+        KartkaDivider()
+        Text("Dokładne alarmy: ${if (status.exactAlarmsAllowed) "dozwolone" else "brak zgody"}",
+            style = KartkaType.RowTitle, color = LookTheme.kartka.ink)
+        KartkaTextButton("Ustawienia dokładnych alarmów", { viewModel.openExactAlarmSettings(context) })
+        KartkaDivider()
+        Text("Kanał przypomnień: ${if (status.channelBlocked) "zablokowany" else "włączony"}",
+            style = KartkaType.RowTitle, color = LookTheme.kartka.ink)
+        KartkaTextButton("Ustawienia kanału przypomnień", { viewModel.openReminderChannelSettings(context) })
+        KartkaButton("Wyślij próbne powiadomienie za minutę", viewModel::scheduleTestNotification,
+            modifier = Modifier.fillMaxWidth(), enabled = status.exactAlarmsAllowed)
+        if (!status.exactAlarmsAllowed) Text("Aby wysłać próbę, włącz zgodę na dokładne alarmy.",
+            style = KartkaType.BodySmall, color = LookTheme.kartka.ink2)
+        status.testMessage?.let { Text(it, style = KartkaType.BodySmall, color = LookTheme.kartka.ink) }
     }
 }
 

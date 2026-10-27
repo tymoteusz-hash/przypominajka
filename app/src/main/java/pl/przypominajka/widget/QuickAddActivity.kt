@@ -1,6 +1,7 @@
 package pl.przypominajka.widget
 
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
@@ -67,6 +69,8 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pl.przypominajka.appContainer
+import pl.przypominajka.ui.checklist.checklistLines
+import pl.przypominajka.util.pointsText
 import pl.przypominajka.ui.look.Look
 import pl.przypominajka.ui.look.LookFonts
 import pl.przypominajka.ui.look.LookTheme
@@ -102,15 +106,23 @@ class QuickAddActivity : ComponentActivity() {
     /** Okienko zamykamy dopiero po zapisie – inaczej system mógłby zakończyć proces przed wstawieniem punktu. */
     private fun save(text: String) {
         if (saving) return
-        if (text.isBlank()) {
+        val lines = checklistLines(text)
+        if (lines.isEmpty()) {
             finish()
             return
         }
         saving = true
         lifecycleScope.launch {
             withContext(NonCancellable) {
-                if (appContainer.checklistRepository.add(text) > 0) {
+                var added = 0
+                lines.forEach {
+                    if (appContainer.checklistRepository.add(it) > 0) added++
+                }
+                if (added > 0) {
                     runCatching { ChecklistWidget().updateAll(applicationContext) }
+                }
+                if (added > 1) {
+                    Toast.makeText(applicationContext, "Dodano ${pointsText(added)}", Toast.LENGTH_SHORT).show()
                 }
             }
             finish()
@@ -200,7 +212,7 @@ private class QuickAddState(
 /** Dotknięcia wewnątrz okienka nie zamykają go (nie przechodzą do tła). */
 private fun Modifier.swallowTaps(): Modifier = pointerInput(Unit) { detectTapGestures { } }
 
-/** Jednolinijkowe pole; Gotowe na klawiaturze = Dodaj. [container] – wygląd pola (tło / linia). */
+/** Pole na tekst lub wklejoną listę; Gotowe = Dodaj. [container] – tło lub linia. */
 @Composable
 private fun QuickAddField(
     state: QuickAddState,
@@ -215,7 +227,8 @@ private fun QuickAddField(
         modifier = Modifier
             .fillMaxWidth()
             .focusRequester(state.focusRequester),
-        singleLine = true,
+        singleLine = false,
+        maxLines = 4,
         textStyle = textStyle,
         cursorBrush = SolidColor(cursor),
         keyboardOptions = KeyboardOptions(
@@ -297,10 +310,10 @@ private fun KartkaQuickAdd(state: QuickAddState, modifier: Modifier) {
             cursor = k.accent,
             container = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
+                .heightIn(min = 48.dp)
                 .clip(shape)
                 .background(field)
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 14.dp, vertical = 12.dp),
         )
         val label = MaterialTheme.typography.labelLarge
         QuickButtons(
@@ -346,10 +359,10 @@ private fun DzwonQuickAdd(state: QuickAddState, modifier: Modifier) {
             cursor = d.goldText,
             container = Modifier
                 .fillMaxWidth()
-                .height(50.dp)
+                .heightIn(min = 50.dp)
                 .clip(shape)
                 .background(d.field)
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
         )
         val label = MaterialTheme.typography.labelLarge
         QuickButtons(
@@ -402,13 +415,13 @@ private fun TablicaQuickAdd(state: QuickAddState, modifier: Modifier) {
                 cursor = note.ink,
                 container = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
+                    .heightIn(min = 48.dp)
                     .drawBehind {
                         val stroke = 2.5.dp.toPx()
                         val y = size.height - stroke / 2
                         drawLine(note.ink, Offset(0f, y), Offset(size.width, y), strokeWidth = stroke)
                     }
-                    .padding(horizontal = 2.dp),
+                    .padding(horizontal = 2.dp, vertical = 8.dp),
             )
             val label = MaterialTheme.typography.labelLarge
             QuickButtons(

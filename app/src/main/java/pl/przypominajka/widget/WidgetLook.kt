@@ -81,6 +81,8 @@ internal class KartkaWidgetColors(theme: ThemeMode) {
     val accent = themed(theme, l.accent, d.accent)
     val accentSoft = themed(theme, l.accentSoft, d.accentSoft)
     val onAccent = themed(theme, l.onAccent, d.onAccent)
+    /** Zaległe przypomnienie – czytelne na jasnym i ciemnym tle. */
+    val warning = themed(theme, Color(0xFFB3261E), Color(0xFFFFB4AB))
 }
 
 /** Dzwon: karta w kolorze nocy (albo biała) i złoto. */
@@ -96,6 +98,8 @@ internal class DzwonWidgetColors(theme: ThemeMode) {
     val goldDeep = themed(theme, l.goldDeep, d.goldDeep)
     val goldText = themed(theme, l.goldText, d.goldText)
     val onGold = themed(theme, l.onGold, d.onGold)
+    /** Zaległe przypomnienie – czytelne na jasnym i ciemnym tle. */
+    val warning = themed(theme, Color(0xFFB33D12), Color(0xFFFFB68E))
 }
 
 /** Tablica: karteczka w danym kolorze (żółta – checklista, różowa – Dziś) z taśmą. */
@@ -111,6 +115,8 @@ internal class TablicaWidgetColors(theme: ThemeMode, note: (TablicaColors) -> No
     /** Linia pod wierszem – zmieszana z papierem, bo barwienie obrazka nie przenosi przezroczystości. */
     val rule = themed(theme, nl.rule.compositeOver(nl.bg), nd.rule.compositeOver(nd.bg))
     val tape = themed(theme, l.tape, d.tape)
+    /** Zaległe przypomnienie – czytelne na jasnym i ciemnym tle. */
+    val warning = themed(theme, Color(0xFF9C2F12), Color(0xFFFFB68E))
 }
 
 /** Zaokrąglenia teł w widżetach. Na Androidzie 8–11 cornerRadius nie działa – wtedy barwiony kształt z res. */

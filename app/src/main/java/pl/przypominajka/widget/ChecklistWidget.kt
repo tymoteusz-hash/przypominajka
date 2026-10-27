@@ -13,12 +13,14 @@ import androidx.glance.GlanceId
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalSize
 import androidx.glance.action.Action
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
+import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
 import androidx.glance.appwidget.action.actionStartActivity
@@ -58,6 +60,7 @@ import pl.przypominajka.data.ChecklistItem
 import pl.przypominajka.ui.look.Look
 import pl.przypominajka.ui.navigation.StartRequest
 import pl.przypominajka.util.TimeFormatter
+import pl.przypominajka.util.pointsText
 import pl.przypominajka.util.relativeDayLabel
 import java.time.Instant
 import java.time.LocalDate
@@ -69,6 +72,8 @@ import java.time.ZoneId
  * a „+” – małe okienko do dopisania punktu ([QuickAddActivity]).
  */
 class ChecklistWidget : GlanceAppWidget() {
+
+    override val sizeMode: SizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val repository = context.appContainer.checklistRepository
@@ -134,6 +139,11 @@ private fun shortWhen(millis: Long?, today: LocalDate): String? {
     else relativeDayLabel(millis, today)
 }
 
+private fun ChecklistItem.isOverdue(now: Long): Boolean = !done && remindAt?.let { it < now } == true
+
+private fun checklistTime(item: ChecklistItem, today: LocalDate, now: Long): String? =
+    shortWhen(item.remindAt, today)?.let { if (item.isOverdue(now)) "$it · minęło" else it }
+
 private fun toggleAction(item: ChecklistItem): Action = actionRunCallback<ToggleChecklistItemAction>(
     actionParametersOf(ChecklistWidget.ItemIdKey to item.id, ChecklistWidget.DoneKey to !item.done),
 )
@@ -146,12 +156,13 @@ private fun ChecklistContent(context: Context, items: List<ChecklistItem>, style
         openList = actionStartActivity(openAppIntent(context, StartRequest.CHECKLIST)),
         quickAdd = actionStartActivity(quickAddIntent(context)),
     )
-    val today = LocalDate.now()
+    val now = System.currentTimeMillis()
+    val today = Instant.ofEpochMilli(now).atZone(ZoneId.systemDefault()).toLocalDate()
     when (style.look) {
-        Look.KARTKA -> KartkaChecklist(items, today, actions, remember(style.theme) { KartkaWidgetColors(style.theme) })
-        Look.DZWON -> DzwonChecklist(items, today, actions, remember(style.theme) { DzwonWidgetColors(style.theme) })
+        Look.KARTKA -> KartkaChecklist(items, today, now, actions, remember(style.theme) { KartkaWidgetColors(style.theme) })
+        Look.DZWON -> DzwonChecklist(items, today, now, actions, remember(style.theme) { DzwonWidgetColors(style.theme) })
         Look.TABLICA -> TablicaChecklist(
-            items, today, actions, remember(style.theme) { TablicaWidgetColors(style.theme) { it.yellow } },
+            items, today, now, actions, remember(style.theme) { TablicaWidgetColors(style.theme) { it.yellow } },
         )
     }
 }
@@ -247,6 +258,9 @@ private fun ChecklistBody(
     emptyColor: ColorProvider,
     /** Dotknięcie pustej listy – od razu okienko dopisywania. */
     onEmptyClick: Action,
+    openList: Action,
+    chromeHeight: Dp,
+    rowHeight: Dp = RowHeight,
     modifier: GlanceModifier,
     row: @Composable (ChecklistItem) -> Unit,
 ) {
@@ -260,8 +274,27 @@ private fun ChecklistBody(
             )
         }
     } else {
+        // Rezerwujemy pełny ostatni wiersz na liczbę punktów niewidocznych w tym rozmiarze.
+        val slots = ((LocalSize.current.height - chromeHeight).value / rowHeight.value).toInt().coerceAtLeast(1)
+        val visibleCount = if (list.size > slots) slots - 1 else list.size
+        val hiddenCount = list.size - visibleCount
         LazyColumn(modifier = modifier) {
-            items(list, itemId = { it.id }) { item -> row(item) }
+            items(list.take(visibleCount), itemId = { it.id }) { item -> row(item) }
+            if (hiddenCount > 0) {
+                item {
+                    Box(
+                        modifier = GlanceModifier.fillMaxWidth().height(RowHeight)
+                            .clickable(openList).padding(start = CheckCellWidth, end = 6.dp),
+                        contentAlignment = Alignment.CenterStart,
+                    ) {
+                        Text(
+                            text = "jeszcze ${pointsText(hiddenCount)}",
+                            style = TextStyle(color = emptyColor, fontSize = 13.sp),
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -269,7 +302,7 @@ private fun ChecklistBody(
 // ---------------------------------------------------------------- Kartka
 
 @Composable
-private fun KartkaChecklist(items: List<ChecklistItem>, today: LocalDate, actions: ChecklistActions, c: KartkaWidgetColors) {
+private fun KartkaChecklist(items: List<ChecklistItem>, today: LocalDate, now: Long, actions: ChecklistActions, c: KartkaWidgetColors) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -299,9 +332,11 @@ private fun KartkaChecklist(items: List<ChecklistItem>, today: LocalDate, action
             list = items,
             emptyColor = c.ink2,
             onEmptyClick = actions.quickAdd,
+            openList = actions.openList,
+            chromeHeight = 64.dp,
             modifier = GlanceModifier.fillMaxWidth().defaultWeight().padding(start = 2.dp, end = 4.dp),
         ) { item ->
-            val time = shortWhen(item.remindAt, today)
+            val time = checklistTime(item, today, now)
             Row(
                 modifier = GlanceModifier.fillMaxWidth().height(RowHeight),
                 verticalAlignment = Alignment.CenterVertically,
@@ -326,7 +361,7 @@ private fun KartkaChecklist(items: List<ChecklistItem>, today: LocalDate, action
                         textDecoration = if (item.done) TextDecoration.LineThrough else TextDecoration.None,
                     ),
                     timeStyle = TextStyle(
-                        color = if (item.done) c.ink2 else c.accent,
+                        color = if (item.done) c.ink2 else if (item.isOverdue(now)) c.warning else c.accent,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                     ),
@@ -339,7 +374,7 @@ private fun KartkaChecklist(items: List<ChecklistItem>, today: LocalDate, action
 // ---------------------------------------------------------------- Dzwon
 
 @Composable
-private fun DzwonChecklist(items: List<ChecklistItem>, today: LocalDate, actions: ChecklistActions, c: DzwonWidgetColors) {
+private fun DzwonChecklist(items: List<ChecklistItem>, today: LocalDate, now: Long, actions: ChecklistActions, c: DzwonWidgetColors) {
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -392,9 +427,11 @@ private fun DzwonChecklist(items: List<ChecklistItem>, today: LocalDate, actions
             list = items,
             emptyColor = c.ink2,
             onEmptyClick = actions.quickAdd,
+            openList = actions.openList,
+            chromeHeight = 68.dp,
             modifier = GlanceModifier.fillMaxWidth().defaultWeight().padding(start = 8.dp, end = 4.dp),
         ) { item ->
-            val time = shortWhen(item.remindAt, today)?.takeUnless { item.done }
+            val time = checklistTime(item, today, now)?.takeUnless { item.done }
             Row(
                 modifier = GlanceModifier.fillMaxWidth().height(RowHeight),
                 verticalAlignment = Alignment.CenterVertically,
@@ -429,7 +466,7 @@ private fun DzwonChecklist(items: List<ChecklistItem>, today: LocalDate, actions
                         fontWeight = FontWeight.Medium,
                         textDecoration = if (item.done) TextDecoration.LineThrough else TextDecoration.None,
                     ),
-                    timeStyle = TextStyle(color = c.goldText, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                    timeStyle = TextStyle(color = if (item.isOverdue(now)) c.warning else c.goldText, fontSize = 12.sp, fontWeight = FontWeight.Bold),
                 )
             }
         }
@@ -439,7 +476,7 @@ private fun DzwonChecklist(items: List<ChecklistItem>, today: LocalDate, actions
 // ---------------------------------------------------------------- Tablica
 
 @Composable
-private fun TablicaChecklist(items: List<ChecklistItem>, today: LocalDate, actions: ChecklistActions, c: TablicaWidgetColors) {
+private fun TablicaChecklist(items: List<ChecklistItem>, today: LocalDate, now: Long, actions: ChecklistActions, c: TablicaWidgetColors) {
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -475,9 +512,12 @@ private fun TablicaChecklist(items: List<ChecklistItem>, today: LocalDate, actio
                 list = items,
                 emptyColor = c.inkMuted,
                 onEmptyClick = actions.quickAdd,
+                openList = actions.openList,
+                chromeHeight = 74.dp,
+                rowHeight = RowHeight + 1.dp,
                 modifier = GlanceModifier.fillMaxWidth().defaultWeight().padding(start = 8.dp, end = 10.dp),
             ) { item ->
-                val time = shortWhen(item.remindAt, today)?.takeUnless { item.done }
+                val time = checklistTime(item, today, now)?.takeUnless { item.done }
                 Column(modifier = GlanceModifier.fillMaxWidth()) {
                     Row(
                         modifier = GlanceModifier.fillMaxWidth().height(RowHeight),
@@ -503,7 +543,7 @@ private fun TablicaChecklist(items: List<ChecklistItem>, today: LocalDate, actio
                                 fontWeight = FontWeight.Bold,
                                 textDecoration = if (item.done) TextDecoration.LineThrough else TextDecoration.None,
                             ),
-                            timeStyle = TextStyle(color = c.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold),
+                            timeStyle = TextStyle(color = if (item.isOverdue(now)) c.warning else c.ink, fontSize = 12.sp, fontWeight = FontWeight.Bold),
                         )
                     }
                     // Przerywana linia jak na kartce w linie.

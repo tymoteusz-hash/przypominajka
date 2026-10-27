@@ -11,9 +11,33 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import pl.przypominajka.data.ChecklistItem
 import pl.przypominajka.data.ChecklistRepository
 import pl.przypominajka.util.pointsText
+import java.time.ZonedDateTime
+
+/** Wklejona lista: bez pustych wierszy, w kolejności z pola. */
+fun checklistLines(text: String): List<String> =
+    text.lineSequence().map { it.trim() }.filter { it.isNotEmpty() }.toList()
+
+/** Skróty liczymy w chwili dotknięcia, według lokalnej strefy. */
+enum class ChecklistQuickTime(val label: String) {
+    HOUR("Za godzinę"), EVENING("Wieczorem"), MORNING("Jutro rano");
+
+    fun millis(now: ZonedDateTime = ZonedDateTime.now()): Long {
+        val time = when (this) {
+            HOUR -> now.plusHours(1)
+            EVENING -> {
+                val evening = now.withHour(19).withMinute(0).withSecond(0).withNano(0)
+                if (evening.isAfter(now)) evening else evening.plusDays(1)
+            }
+            MORNING -> now.plusDays(1).withHour(8).withMinute(0).withSecond(0).withNano(0)
+        }
+        return time.toInstant().toEpochMilli()
+    }
+}
 
 /** Ile punktów zostało do odhaczenia. */
 data class ChecklistSummary(
@@ -74,10 +98,28 @@ class ChecklistViewModel(private val repository: ChecklistRepository) : ViewMode
     private var undoTimeout: Job? = null
     private var undoCounter = 0L
 
-    /** Dodaje punkt na końcu listy; pusty tekst jest pomijany. [remindAt] – epoch millis albo null. */
+    private val addMutex = Mutex()
+    private val _addedMessage = MutableStateFlow<String?>(null)
+    val addedMessage: StateFlow<String?> = _addedMessage.asStateFlow()
+    private var addedTimeout: Job? = null
+
+    /** Dodaje niepuste wiersze na końcu listy, każdy z tym samym terminem. */
     fun add(text: String, remindAt: Long? = null) {
-        if (text.isBlank()) return
-        viewModelScope.launch { repository.add(text, remindAt) }
+        val lines = checklistLines(text)
+        if (lines.isEmpty()) return
+        viewModelScope.launch {
+            addMutex.withLock {
+                lines.forEach { repository.add(it, remindAt) }
+                if (lines.size > 1) {
+                    addedTimeout?.cancel()
+                    _addedMessage.value = "Dodano ${pointsText(lines.size)}"
+                    addedTimeout = viewModelScope.launch {
+                        delay(3_000)
+                        _addedMessage.value = null
+                    }
+                }
+            }
+        }
     }
 
     /** Zapis zmienionego punktu (tekst, godzina, odhaczenie). */

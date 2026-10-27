@@ -7,6 +7,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -62,6 +63,7 @@ import kotlinx.coroutines.delay
 import pl.przypominajka.data.ChecklistItem
 import pl.przypominajka.ui.AppViewModelProvider
 import pl.przypominajka.ui.checklist.ChecklistViewModel
+import pl.przypominajka.ui.checklist.ChecklistQuickTime
 import pl.przypominajka.ui.dzwon.components.DzwonBellInRing
 import pl.przypominajka.ui.dzwon.components.DzwonBottomSheet
 import pl.przypominajka.ui.dzwon.components.DzwonCheckbox
@@ -112,6 +114,7 @@ fun DzwonChecklistScreen(
     val loaded by viewModel.isLoaded.collectAsStateWithLifecycle()
     val summary by viewModel.summary.collectAsStateWithLifecycle()
     val undo by viewModel.undoState.collectAsStateWithLifecycle()
+    val addedMessage by viewModel.addedMessage.collectAsStateWithLifecycle()
     val haptics = LocalHapticFeedback.current
 
     // Co pół minuty odświeżamy „teraz” – godziny, które minęły, zmieniają kolor.
@@ -225,6 +228,8 @@ fun DzwonChecklistScreen(
         },
         bottomBar = {
             AddBar(
+                addedMessage = addedMessage,
+                onQuickTime = { draftRemindAt = it.millis() },
                 timeError = draftTimeError,
                 draft = draft,
                 onDraftChange = { draft = it },
@@ -507,6 +512,8 @@ private fun ReorderableCollectionItemScope.RopeRow(
  */
 @Composable
 private fun AddBar(
+    addedMessage: String?,
+    onQuickTime: (ChecklistQuickTime) -> Unit,
     draft: String,
     onDraftChange: (String) -> Unit,
     remindAt: Long?,
@@ -530,6 +537,7 @@ private fun AddBar(
             .padding(start = 14.dp, end = 14.dp, top = 10.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (addedMessage != null) Text(text = addedMessage, style = DzwonType.CaptionStrong, color = c.goldText)
         if (timeError) Text(text = "Wybierz przyszłą datę i godzinę.", style = DzwonType.Caption, color = MaterialTheme.colorScheme.error)
         AnimatedVisibility(visible = remindAt != null) {
             Text(
@@ -572,6 +580,15 @@ private fun AddBar(
                 onClick = onSubmit,
                 enabled = draft.isNotBlank(),
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ChecklistQuickTime.values().forEach { choice ->
+                DzwonChip(text = choice.label, onClick = { onQuickTime(choice) })
+            }
+            DzwonChip(text = "Wybierz…", onClick = onEditTime)
         }
     }
 }
