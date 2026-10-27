@@ -82,8 +82,6 @@ class AccountViewModel(
 
     fun setTheme(mode: ThemeMode) = appearancePrefs.setTheme(mode)
 
-    fun setBellSound(enabled: Boolean) = appearancePrefs.setBellSound(enabled)
-
     // ---------------------------------------------------------------- Librus
 
     fun onLoginChange(value: String) = form.update { it.copy(login = value.trim(), formError = null) }

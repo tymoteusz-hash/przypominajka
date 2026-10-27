@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Zaokrąglone tło widżetu (promień 22 dp) dla Androida 8–11, gdzie cornerRadius nie działa. Barwione w kodzie. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="22dp" />
+</shape>

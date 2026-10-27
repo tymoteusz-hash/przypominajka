@@ -20,8 +20,8 @@ android {
         applicationId = "pl.przypominajka"
         minSdk = 26
         targetSdk = 36
-        versionCode = 9
-        versionName = "3.5"
+        versionCode = 10
+        versionName = "4.0"
     }
 
     signingConfigs {
@@ -104,6 +104,9 @@ dependencies {
 
     // Widżet "Dziś" na ekran główny telefonu.
     implementation(libs.androidx.glance.appwidget)
+
+    // Przeciąganie punktów checklisty (zmiana kolejności w LazyColumn).
+    implementation(libs.reorderable)
 
     // Quizy generowane przez AI (Claude) – oficjalne SDK Anthropic.
     implementation(libs.anthropic.java)

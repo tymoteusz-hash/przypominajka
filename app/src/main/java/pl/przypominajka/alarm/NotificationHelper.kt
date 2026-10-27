@@ -15,6 +15,7 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import pl.przypominajka.MainActivity
 import pl.przypominajka.R
+import pl.przypominajka.data.ChecklistItem
 import pl.przypominajka.data.Reminder
 import pl.przypominajka.data.SchoolType
 import pl.przypominajka.util.AppearancePrefs
@@ -134,6 +135,56 @@ class NotificationHelper(
         NotificationManagerCompat.from(context).notify(TRAINING_NOTIFICATION_ID, notification)
     }
 
+    /** Przypomnienie o punkcie checklisty – dźwięk jak przy przypomnieniach, dotknięcie otwiera Checklistę. */
+    @SuppressLint("MissingPermission") // uprawnienie sprawdzane w canPostNotifications()
+    fun showChecklistItem(item: ChecklistItem) {
+        if (!canPostNotifications()) return
+        val notificationId = checklistNotificationId(item.id)
+        val openChecklist = PendingIntent.getActivity(
+            context,
+            notificationId,
+            Intent(context, MainActivity::class.java).apply {
+                data = Uri.parse("przypominajka://open/checklist")
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val tone = appearancePrefs.notificationTone
+        ensureReminderChannel(tone)
+        val notification = NotificationCompat.Builder(context, reminderChannelId(tone))
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(item.text)
+            .setContentText("Checklista – dotknij, żeby otworzyć")
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openChecklist)
+            .addAction(0, "Zrobione", checklistDoneIntent(item.id))
+            .build()
+        NotificationManagerCompat.from(context).notify(notificationId, notification)
+    }
+
+    fun cancelChecklistItem(itemId: Long) {
+        NotificationManagerCompat.from(context).cancel(checklistNotificationId(itemId))
+    }
+
+    /** Powiadomienia checklisty mają własny zakres id, żeby nie zderzały się z przypomnieniami (id = numer przypomnienia). */
+    private fun checklistNotificationId(itemId: Long): Int = CHECKLIST_NOTIFICATION_BASE + itemId.toInt()
+
+    private fun checklistDoneIntent(itemId: Long): PendingIntent {
+        val intent = Intent(context, ChecklistAlarmReceiver::class.java).apply {
+            action = ChecklistAlarmReceiver.ACTION_DONE
+            data = Uri.parse("przypominajka://checklist-action/$itemId/done")
+            putExtra(ChecklistAlarmReceiver.EXTRA_ITEM_ID, itemId)
+        }
+        return PendingIntent.getBroadcast(
+            context,
+            checklistNotificationId(itemId),
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+    }
+
     fun canPostNotifications(): Boolean {
         val permissionGranted = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
             ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) ==
@@ -218,5 +269,6 @@ class NotificationHelper(
         const val WORKOUT_CHANNEL_ID = "workout_rest"
         private const val REST_NOTIFICATION_ID = 7_001_001
         private const val TRAINING_NOTIFICATION_ID = 7_002_001
+        private const val CHECKLIST_NOTIFICATION_BASE = 8_000_000
     }
 }

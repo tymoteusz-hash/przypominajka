@@ -22,8 +22,11 @@ class BootReceiver : BroadcastReceiver() {
             Intent.ACTION_TIMEZONE_CHANGED,
             AlarmManager.ACTION_SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED,
             -> {
-                val repository = context.appContainer.repository
-                launchAsync { repository.rescheduleAll() }
+                val container = context.appContainer
+                launchAsync {
+                    container.repository.rescheduleAll()
+                    container.checklistRepository.rescheduleAll()
+                }
             }
         }
     }

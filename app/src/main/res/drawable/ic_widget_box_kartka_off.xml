@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Kartka: puste pole checklisty – zaokrąglony kwadrat 19 dp z obwódką 2 dp (biały – barwiony w kodzie). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="19dp"
+    android:height="19dp"
+    android:viewportWidth="19"
+    android:viewportHeight="19">
+    <path
+        android:pathData="M6,1h7a5,5 0,0 1,5 5v7a5,5 0,0 1,-5 5h-7a5,5 0,0 1,-5 -5v-7a5,5 0,0 1,5 -5z"
+        android:strokeWidth="2"
+        android:strokeColor="#FFFFFFFF" />
+</vector>

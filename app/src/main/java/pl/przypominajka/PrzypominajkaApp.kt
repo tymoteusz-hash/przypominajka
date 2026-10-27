@@ -8,7 +8,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import pl.przypominajka.widget.ChecklistWidget
 import pl.przypominajka.widget.TodayWidget
 
 class PrzypominajkaApp : Application() {
@@ -30,6 +34,28 @@ class PrzypominajkaApp : Application() {
                 delay(WIDGET_REFRESH_DELAY_MS)
                 runCatching { TodayWidget().updateAll(this@PrzypominajkaApp) }
             }
+        }
+
+        // Każda zmiana checklisty (w aplikacji, z powiadomienia, z widżetu) odświeża widżet "Checklista".
+        appScope.launch {
+            container.checklistRepository.observeItems().collectLatest {
+                delay(WIDGET_REFRESH_DELAY_MS)
+                runCatching { ChecklistWidget().updateAll(this@PrzypominajkaApp) }
+            }
+        }
+
+        // Zmiana wyglądu albo motywu w Ustawieniach – oba widżety w nowym stylu
+        // (pierwsza wartość to stan przy starcie, więc ją pomijamy).
+        appScope.launch {
+            container.appearancePrefs.observe()
+                .map { it.look to it.theme }
+                .distinctUntilChanged()
+                .drop(1)
+                .collectLatest {
+                    delay(WIDGET_REFRESH_DELAY_MS)
+                    runCatching { TodayWidget().updateAll(this@PrzypominajkaApp) }
+                    runCatching { ChecklistWidget().updateAll(this@PrzypominajkaApp) }
+                }
         }
     }
 

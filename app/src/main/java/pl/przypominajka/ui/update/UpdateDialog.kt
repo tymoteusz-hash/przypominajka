@@ -6,7 +6,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -17,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import pl.przypominajka.ui.components.Bell
 import pl.przypominajka.update.UpdateInfo
 import pl.przypominajka.update.UpdateManager
 import pl.przypominajka.update.UpdateState
@@ -40,7 +42,7 @@ fun UpdateDialogHost(manager: UpdateManager) {
 
     AlertDialog(
         onDismissRequest = { if (downloading == null) manager.dismissDialog() },
-        icon = { Bell(size = 48.dp, showWaves = false, reportPosition = false) },
+        icon = { Icon(Icons.Filled.Download, contentDescription = null) },
         title = { Text("Nowa wersja ${info.version}") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {

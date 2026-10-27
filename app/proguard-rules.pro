@@ -12,3 +12,6 @@
 # Klasy JDK nieobecne na Androidzie – używane tylko przez nieużywane przez nas ścieżki SDK.
 -dontwarn java.lang.reflect.AnnotatedParameterizedType
 -dontwarn java.lang.reflect.AnnotatedType
+
+# Glance tworzy ActionCallback przez refleksję (Class.forName + konstruktor bez argumentów).
+-keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }

@@ -11,9 +11,9 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 @Database(
     entities = [
         Folder::class, Reminder::class, TimetableLesson::class, Quiz::class, QuizQuestion::class,
-        WorkoutFolder::class, WorkoutPlan::class, WorkoutExercise::class,
+        WorkoutFolder::class, WorkoutPlan::class, WorkoutExercise::class, ChecklistItem::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -29,12 +29,29 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun workoutDao(): WorkoutDao
 
+    abstract fun checklistDao(): ChecklistDao
+
     companion object {
         fun build(context: Context): AppDatabase =
             Room.databaseBuilder(context, AppDatabase::class.java, "przypominajka.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                .addMigrations(
+                    MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7,
+                    MIGRATION_7_8,
+                )
                 .addCallback(SeedDefaultFoldersCallback)
                 .build()
+    }
+}
+
+/** Wersja 8: checklista – jedna lista punktów do odhaczenia (opcjonalnie z godziną). */
+private val MIGRATION_7_8 = object : Migration(7, 8) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `checklist_items` (" +
+                "`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `text` TEXT NOT NULL, " +
+                "`done` INTEGER NOT NULL, `position` INTEGER NOT NULL, `remindAt` INTEGER, " +
+                "`createdAt` INTEGER NOT NULL)",
+        )
     }
 }
 

@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import pl.przypominajka.alarm.ReminderSchedule
+import pl.przypominajka.data.ChecklistItem
+import pl.przypominajka.data.ChecklistRepository
 import pl.przypominajka.data.Folder
 import pl.przypominajka.data.Reminder
 import pl.przypominajka.data.ReminderRepository
@@ -20,6 +22,7 @@ import pl.przypominajka.data.SchoolType
 import pl.przypominajka.data.endDate
 import pl.przypominajka.data.isFinishedOn
 import pl.przypominajka.librus.LibrusSettings
+import pl.przypominajka.ui.checklist.ChecklistSummary
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -66,6 +69,9 @@ data class TodaySummary(
 
 const val AGENDA_SIZE = 4
 
+/** Ile nieodhaczonych punktów checklisty pokazać na stronie głównej. */
+const val CHECKLIST_PREVIEW_SIZE = 3
+
 data class HomeUiState(
     val folders: List<Folder> = emptyList(),
     /** null = "Wszystkie". */
@@ -74,6 +80,10 @@ data class HomeUiState(
     val today: TodaySummary = TodaySummary(),
     val upcoming: List<UpcomingEvent> = emptyList(),
     val showLibrusPrompt: Boolean = false,
+    /** Checklista: ile zostało do odhaczenia (ze wszystkich punktów). */
+    val checklist: ChecklistSummary = ChecklistSummary(),
+    /** Pierwsze nieodhaczone punkty (najwyżej [CHECKLIST_PREVIEW_SIZE]) w kolejności z listy. */
+    val checklistPreview: List<ChecklistItem> = emptyList(),
     val isLoading: Boolean = true,
 ) {
     val isEmpty: Boolean get() = sections.isEmpty()
@@ -83,11 +93,13 @@ private data class HomeData(
     val folders: List<Folder>,
     val reminders: List<Reminder>,
     val schoolTimes: SchoolTimes,
+    val checklist: List<ChecklistItem>,
 )
 
 class HomeViewModel(
     private val repository: ReminderRepository,
     private val librusSettings: LibrusSettings,
+    private val checklistRepository: ChecklistRepository,
 ) : ViewModel() {
 
     private val selectedFolderId = MutableStateFlow<Long?>(null)
@@ -104,7 +116,8 @@ class HomeViewModel(
         repository.observeFolders(),
         repository.observeReminders(),
         repository.observeSchoolTimes(),
-    ) { folders, reminders, schoolTimes -> HomeData(folders, reminders, schoolTimes) }
+        checklistRepository.observeItems(),
+    ) { folders, reminders, schoolTimes, checklist -> HomeData(folders, reminders, schoolTimes, checklist) }
 
     val uiState: StateFlow<HomeUiState> = combine(
         data,
@@ -198,6 +211,8 @@ class HomeViewModel(
             ),
             upcoming = upcoming,
             showLibrusPrompt = showLibrusPrompt,
+            checklist = ChecklistSummary.of(data.checklist),
+            checklistPreview = data.checklist.filter { !it.done }.take(CHECKLIST_PREVIEW_SIZE),
             isLoading = false,
         )
     }
@@ -212,6 +227,17 @@ class HomeViewModel(
 
     fun delete(reminder: Reminder) {
         viewModelScope.launch { repository.deleteReminder(reminder) }
+    }
+
+    /** Odhaczenie punktu checklisty prosto ze strony głównej. */
+    fun toggleChecklistItem(id: Long) {
+        viewModelScope.launch { checklistRepository.toggle(id) }
+    }
+
+    /** Szybkie dopisanie punktu checklisty ze strony głównej. */
+    fun addChecklistItem(text: String) {
+        if (text.isBlank()) return
+        viewModelScope.launch { checklistRepository.add(text) }
     }
 
     fun dismissLibrusPrompt() {

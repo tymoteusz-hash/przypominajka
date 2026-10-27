@@ -133,6 +133,10 @@ fun daysText(count: Int): String = "$count ${if (count == 1) "dzień" else "dni"
 fun remindersText(count: Int): String =
     "$count ${pluralPl(count, "przypomnienie", "przypomnienia", "przypomnień")}"
 
+/** Punkty checklisty: "1 punkt", "3 punkty", "5 punktów". */
+fun pointsText(count: Int): String =
+    "$count ${pluralPl(count, "punkt", "punkty", "punktów")}"
+
 fun formatMillisAsTime(millis: Long): String =
     Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalTime().format(TimeFormatter)
 

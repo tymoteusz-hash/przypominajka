@@ -13,4 +13,6 @@
     <!-- Widżet na ekran główny. -->
     <string name="widget_name">Przypominajka – dziś</string>
     <string name="widget_description">Dzisiejsze przypomnienia i najbliższy sprawdzian</string>
+    <string name="checklist_widget_name">Przypominajka – checklista</string>
+    <string name="checklist_widget_description">Odhaczaj punkty i dopisuj nowe prosto z ekranu głównego</string>
 </resources>

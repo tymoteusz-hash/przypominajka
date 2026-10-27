@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Okienko szybkiego dopisania punktu z widżetu Checklisty (widget/QuickAddActivity.kt):
+         przezroczyste okno nad ekranem głównym; przyciemnienie i karta rysuje Compose. -->
+    <style name="Theme.Przypominajka.QuickAdd" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowAnimationStyle">@android:style/Animation.Translucent</item>
+    </style>
+</resources>

@@ -32,19 +32,65 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Przypominajka">
 
+        <!-- Ikonę w launcherze dają aliasy poniżej (po jednym na wygląd), stąd brak filtra MAIN/LAUNCHER. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" />
+
+        <!-- Ikona aplikacji zależy od wyglądu (util/AppIconSwitcher.kt): włączony jest dokładnie jeden alias.
+             Przed wyborem wyglądu – Dzwon (najbliższy dawnej ikonie z dzwonem).
+             Skróty po przytrzymaniu ikony: Nowe przypomnienie, Plan lekcji, Trening. -->
+        <activity-alias
+            android:name=".LauncherKartka"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_kartka"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_kartka_round"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- Skróty po przytrzymaniu ikony: Nowe przypomnienie, Plan lekcji, Trening. -->
             <meta-data
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
-        </activity>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherDzwon"
+            android:enabled="true"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_dzwon"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_dzwon_round"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
+
+        <activity-alias
+            android:name=".LauncherTablica"
+            android:enabled="false"
+            android:exported="true"
+            android:icon="@mipmap/ic_launcher_tablica"
+            android:label="@string/app_name"
+            android:roundIcon="@mipmap/ic_launcher_tablica_round"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity-alias>
 
         <!-- Przekazuje pobrany plik aktualizacji instalatorowi systemu. -->
         <provider
@@ -75,6 +121,30 @@
                 android:resource="@xml/today_widget_info" />
         </receiver>
 
+        <!-- Widżet "Checklista" na ekran główny telefonu. -->
+        <receiver
+            android:name=".widget.ChecklistWidgetReceiver"
+            android:exported="true"
+            android:label="@string/checklist_widget_name">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/checklist_widget_info" />
+        </receiver>
+
+        <!-- Szybkie dopisanie punktu z widżetu Checklisty (małe okienko nad ekranem głównym). -->
+        <activity
+            android:name=".widget.QuickAddActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:noHistory="true"
+            android:theme="@style/Theme.Przypominajka.QuickAdd"
+            android:windowSoftInputMode="stateAlwaysVisible|adjustResize" />
+
         <!-- Przypomnienie o treningu na koniec lekcji. -->
         <receiver
             android:name=".alarm.TrainingReminderReceiver"
@@ -88,6 +158,11 @@
         <!-- Przyciski "Zrobione", "Za 10 min" i "Za godzinę" w powiadomieniu. -->
         <receiver
             android:name=".alarm.NotificationActionReceiver"
+            android:exported="false" />
+
+        <!-- Przypomnienia punktów Checklisty (alarm + przycisk "Zrobione"). -->
+        <receiver
+            android:name=".alarm.ChecklistAlarmReceiver"
             android:exported="false" />
 
         <!-- Po restarcie, aktualizacji aplikacji, zmianie czasu/strefy lub zgody na alarmy

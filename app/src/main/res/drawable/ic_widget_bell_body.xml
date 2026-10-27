@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dzwon w widżecie: korpus z uchwytem (jak w makiecie, układ 120×128). Biały – barwiony w kodzie na złoto;
+     brzeg i serce dzwonu to osobny obrazek (ic_widget_bell_rim) w ciemniejszym złocie. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="128dp"
+    android:viewportWidth="120"
+    android:viewportHeight="128">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M53,12a7,7 0,1 0,14 0a7,7 0,1 0,-14 0z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M60,18C37,18 25,36 25,60v20L13,98h94L95,80V60c0,-24 -12,-42 -35,-42z" />
+</vector>

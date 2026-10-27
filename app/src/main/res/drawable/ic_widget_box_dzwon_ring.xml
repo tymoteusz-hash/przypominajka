@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dzwon: obwódka okrągłego węzła na linie (20 dp, grubość 2,5 dp; biała – barwiona w kodzie). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="20"
+    android:viewportHeight="20">
+    <path
+        android:pathData="M1.25,10a8.75,8.75 0,1 0,17.5 0a8.75,8.75 0,1 0,-17.5 0z"
+        android:strokeWidth="2.5"
+        android:strokeColor="#FFFFFFFF" />
+</vector>

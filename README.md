@@ -2,25 +2,25 @@
 
 Aplikacja na Androida z przypomnieniami (Kotlin, Jetpack Compose / Material 3, MVVM, Room, AlarmManager).
 
-## Wygląd 3.1 „Złoty dzwon”
+## Wygląd 4.0
 
-Całość kręci się wokół złotego dzwonu (jak emoji 🔔) – ten sam kształt jest w ikonie
-(`res/drawable/ic_launcher_foreground.xml`) i w aplikacji (`ui/components/Bell.kt`).
+Trzy wybieralne wyglądy mają własne układy ekranów i ikony:
 
-- **Kolory** (`ui/theme/Theme.kt`) – jedna spójna rodzina: kremowe tło, espresso (tekst, przyciski), złoto dzwonu
-  i przygaszone, ziemiste barwy o podobnej jasności (`Pastel`: złoto, terakota, szałwia, zmierzch, śliwka, piasek).
-  Kolory folderów też są przygaszone (migracja bazy 6→7 zamienia stare, jaskrawe). Płasko, bez gradientów.
-- **Strona główna** (`ui/home/HubScreen.kt`) – duży dzwon z liczbą dzisiejszych powiadomień, wokół niego jak aureola
-  sześć działów: Przypomnienia, Plan, Trening (po lewej), Quizy, Konto, Ustawienia (po prawej). Pod spodem „Dziś”.
-- **Przejścia** – przy każdej zmianie ekranu dzwon bije (kołysanie, fale, dźwięk), a nowy ekran rozchodzi się kołem
-  od dzwonu (`BellReveal`); przy powrocie zwija się z powrotem.
-- **Dźwięki** (`res/raw`, `util/BellTone.kt`, `util/BellSound.kt`) – syntezowane dzwony (bez cudzych próbek):
-  „Dzwon” (masywny dzwon kościelny z tercją małą, mocnym uderzeniem i długim pogłosem), „Dzwon – melodia”
-  (C#6–E6–C#6–G#5), Dzwonek, Kryształ,
-  Rowerowy, Gong. Dźwięk przejść gra jako dźwięk aplikacji (strumień multimediów, nie powiadomienie).
-- **Ustawienia** (`ui/settings/`) – motyw, dzwon w aplikacji (włącz/wyłącz, dźwięk, głośność, cisza w trybie cichym),
-  dźwięk powiadomień (lista z odsłuchem; każdy dźwięk ma własny kanał `reminders_<dźwięk>`), kiedy przypominać,
-  koniec lekcji, foldery. Konto zawiera już tylko Librusa i klucz AI.
+- **Kartka** (`ui/kartka`) – spokojna lista, cienkie linie i jeden kolor akcentu.
+- **Dzwon** (`ui/dzwon`) – złoty dzwon na środku i działy na okręgu wokół niego.
+- **Tablica** (`ui/tablica`) – kolorowe karteczki przypięte do tablicy.
+
+Przy pierwszym uruchomieniu dwukrokowy przewodnik (`ui/onboarding`) pozwala najpierw wybrać wygląd,
+a potem motyw: **Jasny / Ciemny / Jak w telefonie**. Oba wybory można zmienić w **Ustawienia > Wygląd**.
+
+- **Wspólny motyw** (`ui/look`) – tokeny kolorów oraz `LookTheme` zapewniają spójne kolory, typografię
+  i kształty także we wspólnych oknach Material 3. `LookFonts` korzysta z dołączonych fontów OFL w `res/font`:
+  Inter Tight (Kartka), Fraunces i Manrope (Dzwon), Caveat i Nunito (Tablica). Licencje są w `assets/licenses`.
+- **Ikona aplikacji** zmienia się razem z wyglądem przez `activity-alias` w manifeście
+  (`util/AppIconSwitcher.kt`). Na Samsungach zmiana może usunąć ikonę z ekranu głównego – pozostaje ona
+  w szufladzie aplikacji i trzeba przeciągnąć ją ponownie na pulpit.
+- **Dźwięki powiadomień** pozostają dostępne w Ustawieniach, z odsłuchem; każdy dźwięk ma własny kanał
+  `reminders_<dźwięk>` (`res/raw`, `util/BellTone.kt`, `util/TonePreview.kt`).
 
 ## Działy
 
@@ -41,13 +41,27 @@ Całość kręci się wokół złotego dzwonu (jak emoji 🔔) – ten sam kszta
 - **Quizy** – zestawy pytań do nauki: fiszki (obracana karta) i test ABCD (błędne odpowiedzi z innych
   pytań zestawu), wynik, „Powtórz trudne”, podpowiedzi „Przygotuj się” dla nadchodzących sprawdzianów.
   Pytania można wkleić listą: jedna linia = „pytanie - odpowiedź”.
-- **Konto** – Librus, „kiedy przypominać” (suwaki: sprawdzian 3 dni, kartkówka 2, zadanie 1, wyjście 1),
-  koniec lekcji w każdy dzień tygodnia (gdy brak planu z Librusa), **Wygląd** (motyw: jak w telefonie /
-  jasny / ciemny, dźwięk dzwonu; `util/AppearancePrefs.kt`), foldery.
+- **Konto** – Librus i klucz AI. Wybór wyglądu i motywu jest w **Ustawienia > Wygląd**
+  (`util/AppearancePrefs.kt`); Ustawienia zawierają też „kiedy przypominać”, koniec lekcji i foldery.
+
+## Checklista
+
+Jedna lista punktów do odhaczenia, wspólna dla trzech wyglądów. Kolejność można zmieniać przeciąganiem.
+**Usuń zrobione** usuwa odhaczone punkty, a **Cofnij** przywraca je po usunięciu. Każdy punkt może
+opcjonalnie mieć datę i godzinę przypomnienia – wtedy otrzymuje powiadomienie z akcją **Zrobione**.
+Odhaczenie anuluje alarm i powiadomienie.
+
+Dane i zapis: `data/Checklist.kt` (`ChecklistItem`, `ChecklistDao`), `data/ChecklistRepository.kt`.
+Alarmy: `alarm/ChecklistAlarms.kt` i `alarm/ChecklistAlarmReceiver.kt`. Baza Room ma wersję **8**;
+`MIGRATION_7_8` w `data/AppDatabase.kt` dodaje tabelę `checklist_items`.
 
 ### Poza aplikacją
+
 - **Widżet „Dziś”** na ekran główny telefonu (Glance, `widget/TodayWidget.kt`): ile powiadomień zostało, najbliższe
   godziny, najbliższy sprawdzian i przycisk „+” do nowego przypomnienia. Odświeża się przy każdej zmianie i co 30 min.
+- **Nowy widżet „Checklista”** (`widget/ChecklistWidget.kt`) pozwala odhaczać punkty bezpośrednio z ekranu głównego.
+  Jego „+” otwiera `widget/QuickAddActivity.kt` – małe okno do szybkiego dopisania punktu.
+  Oba widżety dopasowują styl i motyw do wybranego wyglądu (Kartka / Dzwon / Tablica; `widget/WidgetLook.kt`).
 - **Skróty z ikony** (przytrzymaj ikonę): Nowe przypomnienie, Plan lekcji, Trening (`res/xml/shortcuts.xml`,
   adresy `przypominajka://open/...`, obsługa w `StartRequest`).
 - **Powiadomienie** ma trzy przyciski: „Zrobione”, „Za 10 min”, „Za godzinę”.
@@ -103,42 +117,24 @@ przypominajka/
     ├── proguard-rules.pro
     └── src/main/
         ├── AndroidManifest.xml
+        ├── assets/licenses/             # licencje OFL dołączonych fontów
         ├── res/
-        │   ├── drawable/ic_notification.xml, ic_launcher_foreground.xml
-        │   ├── mipmap-anydpi-v26/ic_launcher.xml, ic_launcher_round.xml
-        │   ├── values/strings.xml, colors.xml, themes.xml
-        │   └── values-night/themes.xml
+        │   ├── drawable/, mipmap-anydpi-v26/ # ikony trzech wyglądów i grafiki widżetów
+        │   ├── font/                    # Inter Tight, Fraunces, Manrope, Caveat, Nunito
+        │   └── values/, values-night/, xml/, raw/, layout/
         └── java/pl/przypominajka/
-            ├── PrzypominajkaApp.kt          # Application: kontener zależności + kanał powiadomień
-            ├── AppContainer.kt              # ręczne DI (baza, scheduler, repozytorium)
-            ├── MainActivity.kt
-            ├── data/
-            │   ├── Folder.kt                # encja folderu + paleta kolorów
-            │   ├── Reminder.kt              # encja przypomnienia
-            │   ├── Converters.kt            # LocalDate / List<LocalTime> <-> SQLite
-            │   ├── FolderDao.kt
-            │   ├── ReminderDao.kt
-            │   ├── AppDatabase.kt           # Room + domyślne foldery (Szkoła, Dom, Praca, Inne)
-            │   └── ReminderRepository.kt    # cała logika zapisu + (re)planowania alarmów
-            ├── alarm/
-            │   ├── ReminderSchedule.kt      # obliczanie najbliższego terminu
-            │   ├── ReminderScheduler.kt     # AlarmManager.setExactAndAllowWhileIdle
-            │   ├── NotificationHelper.kt    # kanał + powiadomienie z przyciskami
-            │   ├── AlarmReceiver.kt         # alarm -> powiadomienie -> kolejny alarm
-            │   ├── NotificationActionReceiver.kt  # "Zrobione" / "Przypomnij za 10 min"
-            │   ├── BootReceiver.kt          # BOOT_COMPLETED i in. -> ponowne planowanie
-            │   └── ReceiverExtensions.kt    # goAsync + korutyny
-            ├── util/Format.kt               # formatowanie dat, polska odmiana liczebników
+            ├── PrzypominajkaApp.kt, AppContainer.kt, MainActivity.kt
+            ├── data/                    # Room v8, przypomnienia, Checklist.kt, ChecklistRepository.kt
+            ├── alarm/                   # przypomnienia, ChecklistAlarms.kt, ChecklistAlarmReceiver.kt
+            ├── widget/                  # TodayWidget, ChecklistWidget, WidgetLook, QuickAddActivity
+            ├── util/                    # AppearancePrefs, AppIconSwitcher, formatowanie i dźwięki
             └── ui/
-                ├── AppViewModelProvider.kt
-                ├── navigation/AppNavHost.kt
-                ├── theme/Theme.kt           # własna paleta jasna/ciemna, typografia, "Większy tekst"
-                ├── components/
-                │   ├── CommonComponents.kt  # FolderDot, swipe-to-delete, TimePicker
-                │   └── PermissionsSection.kt
-                ├── home/HomeScreen.kt, HomeViewModel.kt
-                ├── edit/EditReminderScreen.kt, EditReminderViewModel.kt
-                └── folders/FoldersScreen.kt, FoldersViewModel.kt
+                ├── AppRoot.kt, AppViewModelProvider.kt
+                ├── navigation/Routes.kt
+                ├── look/                # tokeny, LookTheme i LookFonts
+                ├── onboarding/          # wybór wyglądu, potem motywu
+                ├── kartka/, dzwon/, tablica/ # ekrany i komponenty trzech wyglądów
+                └── checklist/, home/, edit/, folders/, settings/, account/, plan/, workout/, quiz/, librus/, update/
 ```
 
 ## Jak działa planowanie

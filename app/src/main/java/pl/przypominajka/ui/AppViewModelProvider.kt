@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import pl.przypominajka.AppContainer
 import pl.przypominajka.PrzypominajkaApp
 import pl.przypominajka.ui.account.AccountViewModel
+import pl.przypominajka.ui.checklist.ChecklistViewModel
 import pl.przypominajka.ui.edit.EditReminderViewModel
 import pl.przypominajka.ui.folders.FoldersViewModel
 import pl.przypominajka.ui.home.HomeViewModel
@@ -22,7 +23,10 @@ import pl.przypominajka.ui.workout.WorkoutViewModel
 object AppViewModelProvider {
     val Factory: ViewModelProvider.Factory = viewModelFactory {
         initializer {
-            HomeViewModel(container().repository, container().librusSettings)
+            HomeViewModel(container().repository, container().librusSettings, container().checklistRepository)
+        }
+        initializer {
+            ChecklistViewModel(container().checklistRepository)
         }
         initializer {
             EditReminderViewModel(createSavedStateHandle(), container().repository, container().schoolPrefs)
@@ -68,7 +72,8 @@ object AppViewModelProvider {
                 librusSyncer = container.librusSyncer,
                 repository = container.repository,
                 notificationHelper = container.notificationHelper,
-                bellSound = container.bellSound,
+                tonePreview = container.tonePreview,
+                changeLook = container::changeLook,
                 updates = container.updateManager,
             )
         }

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ikona wyglądu Dzwon: złoty dzwon (układ 120 x 128 z makiety B_Start) i cienki złoty łuk pierścienia.
+     Makieta (kafelek 60 x 60): dzwon translate(14 11) scale(0.27); tu dodatkowo x1,2 + 18 na widoczne 72 dp. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Łuk pierścienia: okrąg r=30 od góry zgodnie z ruchem wskazówek, ok. 45% obwodu (dasharray 70/157). -->
+    <path
+        android:pathData="M54,24A30,30 0,1 1,54 84A30,30 0,1 1,54 24"
+        android:strokeWidth="3"
+        android:strokeColor="#FFF5C64B"
+        android:trimPathEnd="0.4456" />
+    <group
+        android:scaleX="0.324"
+        android:scaleY="0.324"
+        android:translateX="34.8"
+        android:translateY="31.2">
+        <!-- uszko -->
+        <path
+            android:fillColor="#FFF5C64B"
+            android:pathData="M53,12a7,7 0,1 0,14 0a7,7 0,1 0,-14 0z" />
+        <!-- korpus -->
+        <path
+            android:fillColor="#FFF5C64B"
+            android:pathData="M60,18C37,18 25,36 25,60v20L13,98h94L95,80V60c0,-24 -12,-42 -35,-42z" />
+        <!-- krawędź -->
+        <path
+            android:fillColor="#FFC9971F"
+            android:pathData="M14.5,95h91a5.5,5.5 0,0 1,0 11h-91a5.5,5.5 0,0 1,0 -11z" />
+        <!-- serce -->
+        <path
+            android:fillColor="#FFC9971F"
+            android:pathData="M50,116a10,10 0,1 0,20 0a10,10 0,1 0,-20 0z" />
+    </group>
+</vector>

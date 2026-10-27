@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tablica: przerywana linia pod wierszem listy (biała – barwiona w kodzie; skalowana przez przycięcie, więc kreski się nie rozciągają). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="400dp"
+    android:height="1dp"
+    android:viewportWidth="400"
+    android:viewportHeight="1">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M0,0h3v1h-3zM6,0h3v1h-3zM12,0h3v1h-3zM18,0h3v1h-3zM24,0h3v1h-3zM30,0h3v1h-3zM36,0h3v1h-3zM42,0h3v1h-3zM48,0h3v1h-3zM54,0h3v1h-3zM60,0h3v1h-3zM66,0h3v1h-3zM72,0h3v1h-3zM78,0h3v1h-3zM84,0h3v1h-3zM90,0h3v1h-3zM96,0h3v1h-3zM102,0h3v1h-3zM108,0h3v1h-3zM114,0h3v1h-3zM120,0h3v1h-3zM126,0h3v1h-3zM132,0h3v1h-3zM138,0h3v1h-3zM144,0h3v1h-3zM150,0h3v1h-3zM156,0h3v1h-3zM162,0h3v1h-3zM168,0h3v1h-3zM174,0h3v1h-3zM180,0h3v1h-3zM186,0h3v1h-3zM192,0h3v1h-3zM198,0h3v1h-3zM204,0h3v1h-3zM210,0h3v1h-3zM216,0h3v1h-3zM222,0h3v1h-3zM228,0h3v1h-3zM234,0h3v1h-3zM240,0h3v1h-3zM246,0h3v1h-3zM252,0h3v1h-3zM258,0h3v1h-3zM264,0h3v1h-3zM270,0h3v1h-3zM276,0h3v1h-3zM282,0h3v1h-3zM288,0h3v1h-3zM294,0h3v1h-3zM300,0h3v1h-3zM306,0h3v1h-3zM312,0h3v1h-3zM318,0h3v1h-3zM324,0h3v1h-3zM330,0h3v1h-3zM336,0h3v1h-3zM342,0h3v1h-3zM348,0h3v1h-3zM354,0h3v1h-3zM360,0h3v1h-3zM366,0h3v1h-3zM372,0h3v1h-3zM378,0h3v1h-3zM384,0h3v1h-3zM390,0h3v1h-3zM396,0h3v1h-3z" />
+</vector>

@@ -13,13 +13,14 @@ import pl.przypominajka.data.ReminderRepository
 import pl.przypominajka.data.SchoolType
 import pl.przypominajka.librus.LibrusSettings
 import pl.przypominajka.librus.LibrusSyncer
+import pl.przypominajka.ui.look.Look
 import pl.przypominajka.update.UpdateManager
 import pl.przypominajka.util.Appearance
 import pl.przypominajka.util.AppearancePrefs
-import pl.przypominajka.util.BellSound
 import pl.przypominajka.util.BellTone
 import pl.przypominajka.util.SchoolPrefs
 import pl.przypominajka.util.ThemeMode
+import pl.przypominajka.util.TonePreview
 import java.time.DayOfWeek
 import java.time.LocalTime
 
@@ -32,7 +33,7 @@ data class SettingsUiState(
     val isSyncing: Boolean = false,
 )
 
-/** Zakładka Ustawienia: wygląd, dźwięki dzwonu i powiadomień, ustawienia szkolne. */
+/** Zakładka Ustawienia: wygląd, motyw, dźwięk powiadomień, ustawienia szkolne. */
 class SettingsViewModel(
     private val appearancePrefs: AppearancePrefs,
     private val schoolPrefs: SchoolPrefs,
@@ -40,7 +41,9 @@ class SettingsViewModel(
     private val librusSyncer: LibrusSyncer,
     private val repository: ReminderRepository,
     private val notificationHelper: NotificationHelper,
-    private val bellSound: BellSound,
+    private val tonePreview: TonePreview,
+    /** Zapis wyglądu + zmiana ikony aplikacji (AppContainer.changeLook). */
+    private val changeLook: (Look) -> Unit,
     val updates: UpdateManager,
 ) : ViewModel() {
 
@@ -74,30 +77,16 @@ class SettingsViewModel(
 
     fun setTheme(mode: ThemeMode) = appearancePrefs.setTheme(mode)
 
-    fun setBellSound(enabled: Boolean) {
-        appearancePrefs.setBellSound(enabled)
-        if (enabled) bellSound.preview(appearancePrefs.transitionTone)
-    }
-
-    fun setTransitionTone(tone: BellTone) {
-        appearancePrefs.setTransitionTone(tone)
-        bellSound.preview(tone)
-    }
-
-    fun setBellVolume(volume: Float) {
-        appearancePrefs.setBellVolume(volume)
-        bellSound.preview(appearancePrefs.transitionTone, volume)
-    }
-
-    fun setQuietWhenSilent(enabled: Boolean) = appearancePrefs.setQuietWhenSilent(enabled)
+    /** Nowy wygląd – razem z nim zmienia się ikona aplikacji. */
+    fun setLook(look: Look) = changeLook(look)
 
     fun setNotificationTone(tone: BellTone) {
         appearancePrefs.setNotificationTone(tone)
         notificationHelper.ensureReminderChannel(tone)
-        bellSound.preview(tone, volume = 0.8f)
+        tonePreview.play(tone)
     }
 
-    fun preview(tone: BellTone) = bellSound.preview(tone, volume = 0.8f)
+    fun preview(tone: BellTone) = tonePreview.play(tone)
 
     val reminderChannelId: String get() = notificationHelper.currentReminderChannelId
 
@@ -130,6 +119,6 @@ class SettingsViewModel(
     }
 
     override fun onCleared() {
-        bellSound.stopPreview()
+        tonePreview.stop()
     }
 }
