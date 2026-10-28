@@ -15,3 +15,7 @@
 
 # Glance tworzy ActionCallback przez refleksję (Class.forName + konstruktor bez argumentów).
 -keep class * implements androidx.glance.appwidget.action.ActionCallback { <init>(); }
+
+# Glance rozpoznaje widżety po nazwie klasy (updateAll -> getGlanceIds). Bez tego R8 zmienia nazwy
+# albo łączy TodayWidget z ChecklistWidget i widżet "Checklista" potrafi pokazać treść widżetu "Dziś".
+-keep class * extends androidx.glance.appwidget.GlanceAppWidget
