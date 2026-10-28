@@ -4,11 +4,17 @@
 # Podpis: jeśli w Settings → Secrets and variables → Actions są sekrety
 #   KEYSTORE_BASE64 (plik przypominajka.jks zakodowany base64), KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD,
 # APK jest podpisany kluczem przypominajka.jks i instaluje się jako aktualizacja. Bez nich – kluczem debug.
+#
+# Wydanie: na main, gdy versionName z app/build.gradle.kts nie ma jeszcze Release (tag vX.Y), powstaje
+# Release z Przypominajka.apk – aplikacja sama go znajdzie. Tylko z kluczem przypominajka.jks, nigdy z debug.
 name: Build APK
 
 on:
   push:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -54,3 +60,27 @@ jobs:
           name: Przypominajka
           path: Przypominajka.apk
           retention-days: 14
+
+      - name: Wersja i czy wydać
+        id: version
+        if: github.ref == 'refs/heads/main' && env.KEYSTORE_BASE64 != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/.*versionName = "\(.*\)".*/\1/p' app/build.gradle.kts)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if gh release view "v$version" > /dev/null 2>&1; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Release
+        if: steps.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v${{ steps.version.outputs.version }}" Przypominajka.apk \
+            --target "$GITHUB_SHA" \
+            --title "Przypominajka ${{ steps.version.outputs.version }}" \
+            --notes "$(git log -1 --format=%B | sed '/^Co-Authored-By:/,$d')"

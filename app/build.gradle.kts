@@ -20,8 +20,8 @@ android {
         applicationId = "pl.przypominajka"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "4.1"
+        versionCode = 12
+        versionName = "4.15"
     }
 
     signingConfigs {

@@ -79,8 +79,9 @@ Aplikacja sama sprawdza `https://api.github.com/repos/tymoteusz-hash/przypominaj
 `Przypominajka.apk`, sprawdza, czy to ta sama aplikacja w wyższej wersji, i otwiera systemowy instalator
 (`update/UpdateManager.kt`, `ui/update/UpdateDialog.kt`, FileProvider `res/xml/update_paths.xml`).
 
-**Wydanie nowej wersji:** podbij `versionCode` i `versionName` w `app/build.gradle.kts`, zbuduj release,
-utwórz na GitHubie Release z tagiem `vX.Y` i dołącz plik `Przypominajka.apk`.
+**Wydanie nowej wersji:** podbij `versionCode` i `versionName` w `app/build.gradle.kts` i wypchnij na `main`.
+GitHub Actions (`.github/workflows/build.yml`) zbuduje APK i utworzy Release `vX.Y` z `Przypominajka.apk`
+(tylko gdy są sekrety z kluczem podpisu – patrz komentarz w pliku workflow). Opis wydania = opis commita.
 
 **Podpis:** release podpisuje `przypominajka.jks` (dane w `keystore.properties`). Oba pliki są tylko na tym
 komputerze i w kopii `E:\Przypominajka-klucz` – **nigdy w repozytorium**. Bez nich nie da się wydać aktualizacji,
