@@ -29,6 +29,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -58,6 +61,8 @@ fun TablicaWorkoutScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
+    val restPresets by viewModel.restPresets.collectAsStateWithLifecycle()
+    var customRest by rememberSaveable { mutableStateOf(false) }
     val training by viewModel.training.collectAsStateWithLifecycle()
     val colors = LookTheme.tablica
     val folder = state.selectedFolder
@@ -127,7 +132,7 @@ fun TablicaWorkoutScreen(
                             InkButton("Nowy plan", { planDialog = PlanRequest(null) }, icon = TablicaIcons.Plus)
                         }
                     }
-                    item("rest") { RestNote(rest, viewModel::startRest, viewModel::extendRest, viewModel::stopRest) }
+                    item("rest") { RestNote(rest, restPresets, viewModel::startRest, { customRest = true }, viewModel::extendRest, viewModel::stopRest) }
                     if (state.plans.isEmpty()) {
                         item("presets") {
                             SectionLabel("Wybierz gotowy podział")
@@ -162,6 +167,12 @@ fun TablicaWorkoutScreen(
             }
         }
         CompletionBurst(completion)
+    }
+    if (customRest) {
+        RestTimeDialog(
+            restPresets, onDismiss = { customRest = false },
+            onStart = { viewModel.startCustomRest(it); customRest = false }, onRemove = viewModel::removeRestPreset,
+        )
     }
     weekendDay?.let { day ->
         TablicaTimePickerDialog(initial = training.settings.weekendTime(day), title = "Trening: ${DAY_NAMES[day.value - 1]}",
@@ -238,7 +249,7 @@ private fun trainingNextText(training: TrainingUi): String {
 }
 
 @Composable
-private fun RestNote(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
+private fun RestNote(rest: RestState?, presets: List<Int>, onStart: (Int) -> Unit, onCustom: () -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
     var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
     val haptics = LocalHapticFeedback.current
     LaunchedEffect(rest) {
@@ -255,7 +266,8 @@ private fun RestNote(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -
         if (rest == null) {
             Text("Zawibruje, gdy minie – także przy zablokowanym ekranie", style = TablicaType.Hint)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                REST_PRESETS.forEach { seconds -> OutlineInkButton(formatSeconds(seconds), { onStart(seconds) }) }
+                presets.forEach { seconds -> OutlineInkButton(formatSeconds(seconds), { onStart(seconds) }) }
+                OutlineInkButton("Własny", onCustom, icon = TablicaIcons.Plus)
             }
         } else {
             val remainingMs = (rest.endsAt - now).coerceAtLeast(0L)
@@ -272,6 +284,44 @@ private fun RestNote(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -
 }
 
 private fun formatSeconds(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+
+private val RestKeyboard = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+
+/** Własna długość przerwy (minuty + sekundy) i usuwanie czasów z szybkiego wyboru. */
+@Composable
+private fun RestTimeDialog(presets: List<Int>, onDismiss: () -> Unit, onStart: (Int) -> Unit, onRemove: (Int) -> Unit) {
+    var minutes by rememberSaveable { mutableStateOf("") }
+    var seconds by rememberSaveable { mutableStateOf("") }
+    val total = parseRestTime(minutes, seconds)
+    NoteDialog(onDismiss, "Własny czas przerwy", modifier = Modifier.imePadding(), buttons = {
+        NoteDialogButtons("Start", { total?.let(onStart) }, onDismiss, confirmEnabled = total != null)
+    }) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(Modifier.weight(1f)) {
+                Text("Minuty", style = TablicaType.Hint)
+                NoteTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    label = "Minuty", placeholder = "0", singleLine = true, keyboardOptions = RestKeyboard)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("Sekundy", style = TablicaType.Hint)
+                NoteTextField(seconds, { seconds = it.filter(Char::isDigit).take(2) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    label = "Sekundy", placeholder = "0", singleLine = true, keyboardOptions = RestKeyboard)
+            }
+        }
+        Text(restTimeHint(total), style = TablicaType.Hint, modifier = Modifier.padding(top = 8.dp))
+        if (presets.isNotEmpty()) {
+            Text("Szybki wybór – dotknij, aby usunąć", style = TablicaType.Strong, modifier = Modifier.padding(top = 12.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                presets.forEach { preset ->
+                    TablicaChip(
+                        "${formatSeconds(preset)}  ✕", false, { onRemove(preset) },
+                        modifier = Modifier.semantics { contentDescription = "Usuń ${formatSeconds(preset)} z szybkiego wyboru" },
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun PlanNote(

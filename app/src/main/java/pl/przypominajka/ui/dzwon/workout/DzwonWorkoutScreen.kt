@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -66,6 +67,8 @@ fun DzwonWorkoutScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
+    val restPresets by viewModel.restPresets.collectAsStateWithLifecycle()
+    var customRest by rememberSaveable { mutableStateOf(false) }
     val training by viewModel.training.collectAsStateWithLifecycle()
     val folder = state.selectedFolder
     val c = LookTheme.dzwon
@@ -152,7 +155,7 @@ fun DzwonWorkoutScreen(
                             style = DzwonType.Body, color = c.ink2)
                     }
                 }
-                item("rest") { RestCard(rest, viewModel::startRest, viewModel::extendRest, viewModel::stopRest) }
+                item("rest") { RestCard(rest, restPresets, viewModel::startRest, { customRest = true }, viewModel::extendRest, viewModel::stopRest) }
                 if (state.plans.isEmpty()) item("presets") {
                     DzwonSectionHeader("Wybierz gotowy podział")
                     Text("Dodamy puste plany, a ćwiczenia wpiszesz sam. Możesz też zrobić własny podział.",
@@ -188,6 +191,12 @@ fun DzwonWorkoutScreen(
         }
     }
 
+    if (customRest) {
+        RestTimeDialog(
+            restPresets, onDismiss = { customRest = false },
+            onStart = { viewModel.startCustomRest(it); customRest = false }, onRemove = viewModel::removeRestPreset,
+        )
+    }
     weekendDay?.let { day ->
         DzwonTimePickerDialog(
             initialTime = training.settings.weekendTime(day), title = "Trening: ${DAY_NAMES[day.value - 1]}",
@@ -290,7 +299,7 @@ private fun trainingNextText(training: TrainingUi): String {
 }
 
 @Composable
-private fun RestCard(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
+private fun RestCard(rest: RestState?, presets: List<Int>, onStart: (Int) -> Unit, onCustom: () -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
     val c = LookTheme.dzwon
     DzwonCard(modifier = Modifier.fillMaxWidth(), color = c.field, contentPadding = PaddingValues(18.dp)) {
         DzwonSectionHeader("Przerwa między seriami")
@@ -298,7 +307,8 @@ private fun RestCard(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -
             Text("Zawibruje, gdy minie – także przy zablokowanym ekranie", style = DzwonType.Caption, color = c.ink2)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.padding(top = 12.dp)) {
-                REST_PRESETS.forEach { seconds -> DzwonChip(formatSeconds(seconds), { onStart(seconds) }, selected = true) }
+                presets.forEach { seconds -> DzwonChip(formatSeconds(seconds), { onStart(seconds) }, selected = true) }
+                DzwonChip("Własny", onCustom, icon = DzwonIcons.Plus)
             }
         } else {
             var now by remember(rest.endsAt) { mutableLongStateOf(System.currentTimeMillis()) }
@@ -334,6 +344,38 @@ private fun RestCard(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -
 }
 
 private fun formatSeconds(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+
+private val RestKeyboard = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+
+/** Własna długość przerwy (minuty + sekundy) i usuwanie czasów z szybkiego wyboru. */
+@Composable
+private fun RestTimeDialog(presets: List<Int>, onDismiss: () -> Unit, onStart: (Int) -> Unit, onRemove: (Int) -> Unit) {
+    val c = LookTheme.dzwon
+    var minutes by rememberSaveable { mutableStateOf("") }
+    var seconds by rememberSaveable { mutableStateOf("") }
+    val total = parseRestTime(minutes, seconds)
+    DzwonDialog(
+        onDismissRequest = onDismiss, title = "Własny czas przerwy", confirmText = "Start",
+        onConfirm = { total?.let(onStart) }, modifier = Modifier.imePadding(), confirmEnabled = total != null,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            DzwonTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), placeholder = "0", label = "Minuty", keyboardOptions = RestKeyboard)
+            DzwonTextField(seconds, { seconds = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), placeholder = "0", label = "Sekundy", keyboardOptions = RestKeyboard)
+        }
+        Text(restTimeHint(total), style = DzwonType.Caption, color = c.ink2, modifier = Modifier.padding(top = 8.dp))
+        if (presets.isNotEmpty()) {
+            Text("Szybki wybór – dotknij, aby usunąć", style = DzwonType.Caption, color = c.ink2, modifier = Modifier.padding(top = 12.dp))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
+                presets.forEach { preset ->
+                    DzwonChip(
+                        "${formatSeconds(preset)}  ✕", { onRemove(preset) },
+                        modifier = Modifier.semantics { contentDescription = "Usuń ${formatSeconds(preset)} z szybkiego wyboru" },
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun PlanCard(

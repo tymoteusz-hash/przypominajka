@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -40,11 +41,12 @@ import pl.przypominajka.data.WorkoutPlan
 import pl.przypominajka.ui.AppViewModelProvider
 import pl.przypominajka.ui.kartka.components.*
 import pl.przypominajka.ui.look.LookTheme
-import pl.przypominajka.ui.workout.REST_PRESETS
 import pl.przypominajka.ui.workout.WORKOUT_PRESETS
 import pl.przypominajka.ui.workout.TrainingUi
 import pl.przypominajka.ui.workout.WorkoutPlanUi
 import pl.przypominajka.ui.workout.WorkoutViewModel
+import pl.przypominajka.ui.workout.parseRestTime
+import pl.przypominajka.ui.workout.restTimeHint
 import java.time.DayOfWeek
 import java.time.LocalDate
 
@@ -60,6 +62,8 @@ fun KartkaWorkoutScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val rest by viewModel.rest.collectAsStateWithLifecycle()
+    val restPresets by viewModel.restPresets.collectAsStateWithLifecycle()
+    var customRest by rememberSaveable { mutableStateOf(false) }
     val training by viewModel.training.collectAsStateWithLifecycle()
     val folder = state.selectedFolder
     var folderDialog by remember { mutableStateOf<FolderRequest?>(null) }
@@ -144,7 +148,7 @@ fun KartkaWorkoutScreen(
                             Progress(state.doneCount, state.total)
                         }
                     }
-                    item("rest") { RestSection(rest, viewModel::startRest, viewModel::extendRest, viewModel::stopRest) }
+                    item("rest") { RestSection(rest, restPresets, viewModel::startRest, { customRest = true }, viewModel::extendRest, viewModel::stopRest) }
                     if (state.plans.isEmpty()) item("presets") {
                         Column(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             KartkaSectionHeader("Wybierz gotowy podział")
@@ -174,6 +178,12 @@ fun KartkaWorkoutScreen(
                 }
             }
         }
+    }
+    if (customRest) {
+        RestTimeDialog(
+            restPresets, onDismiss = { customRest = false },
+            onStart = { viewModel.startCustomRest(it); customRest = false }, onRemove = viewModel::removeRestPreset,
+        )
     }
     weekendDay?.let { day ->
         KartkaTimePickerDialog(
@@ -275,14 +285,15 @@ private fun trainingNextText(training: TrainingUi): String {
 }
 
 @Composable
-private fun RestSection(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
+private fun RestSection(rest: RestState?, presets: List<Int>, onStart: (Int) -> Unit, onCustom: () -> Unit, onExtend: (Int) -> Unit, onStop: () -> Unit) {
     val c = LookTheme.kartka
     KartkaCard(Modifier.padding(horizontal = 20.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         KartkaEyebrow("Przerwa między seriami")
         if (rest == null) {
             Text("Zawibruje, gdy minie – także przy zablokowanym ekranie", style = KartkaType.Caption, color = c.ink2)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                REST_PRESETS.forEach { seconds -> KartkaOutlineButton(formatSeconds(seconds), { onStart(seconds) }) }
+                presets.forEach { seconds -> KartkaOutlineButton(formatSeconds(seconds), { onStart(seconds) }) }
+                KartkaOutlineButton("Własny", onCustom, icon = KartkaIcons.Plus)
             }
         } else {
             val haptics = LocalHapticFeedback.current
@@ -311,6 +322,38 @@ private fun RestSection(rest: RestState?, onStart: (Int) -> Unit, onExtend: (Int
 }
 
 private fun formatSeconds(seconds: Int): String = "%d:%02d".format(seconds / 60, seconds % 60)
+
+private val RestKeyboard = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done)
+
+/** Własna długość przerwy (minuty + sekundy) i usuwanie czasów z szybkiego wyboru. */
+@Composable
+private fun RestTimeDialog(presets: List<Int>, onDismiss: () -> Unit, onStart: (Int) -> Unit, onRemove: (Int) -> Unit) {
+    val c = LookTheme.kartka
+    var minutes by rememberSaveable { mutableStateOf("") }
+    var seconds by rememberSaveable { mutableStateOf("") }
+    val total = parseRestTime(minutes, seconds)
+    KartkaDialog(
+        onDismissRequest = onDismiss, title = "Własny czas przerwy", modifier = Modifier.imePadding(),
+        confirmLabel = "Start", confirmEnabled = total != null, onConfirm = { total?.let(onStart) },
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            KartkaTextField(minutes, { minutes = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), placeholder = "0", label = "Minuty", keyboardOptions = RestKeyboard)
+            KartkaTextField(seconds, { seconds = it.filter(Char::isDigit).take(2) }, Modifier.weight(1f), placeholder = "0", label = "Sekundy", keyboardOptions = RestKeyboard)
+        }
+        Text(restTimeHint(total), style = KartkaType.Caption, color = c.ink2)
+        if (presets.isNotEmpty()) {
+            KartkaEyebrow("Szybki wybór – dotknij, aby usunąć")
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                presets.forEach { preset ->
+                    KartkaFilterChip(
+                        "${formatSeconds(preset)}  ✕", false, { onRemove(preset) },
+                        modifier = Modifier.semantics { contentDescription = "Usuń ${formatSeconds(preset)} z szybkiego wyboru" },
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun Progress(done: Int, total: Int) {

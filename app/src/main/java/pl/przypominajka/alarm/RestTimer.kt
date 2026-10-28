@@ -26,6 +26,20 @@ class RestTimer(private val context: Context, private val prefs: SharedPreferenc
     private val _state = MutableStateFlow(readState())
     val state: StateFlow<RestState?> = _state.asStateFlow()
 
+    private val _presets = MutableStateFlow(readPresets())
+
+    /** Czasy przerwy do szybkiego wyboru (sekundy, rosnąco) – użytkownik dodaje własne i usuwa. */
+    val presets: StateFlow<List<Int>> = _presets.asStateFlow()
+
+    /** Dodaje własny czas do szybkiego wyboru; przy komplecie wypada najdawniej dodany. */
+    fun addPreset(seconds: Int) {
+        val stored = storedPresets()
+        if (seconds in stored) return
+        savePresets((stored + seconds).takeLast(MAX_PRESETS))
+    }
+
+    fun removePreset(seconds: Int) = savePresets(storedPresets() - seconds)
+
     fun start(seconds: Int) {
         val rest = RestState(System.currentTimeMillis() + seconds * 1000L, seconds)
         save(rest)
@@ -75,6 +89,17 @@ class RestTimer(private val context: Context, private val prefs: SharedPreferenc
         return RestState(endsAt, prefs.getInt(KEY_TOTAL, 0))
     }
 
+    /** Kolejność dodania (do wybierania, który wypada); [presets] są posortowane. */
+    private fun storedPresets(): List<Int> =
+        prefs.getString(KEY_PRESETS, null)?.split(',')?.mapNotNull { it.toIntOrNull() } ?: DEFAULT_PRESETS
+
+    private fun readPresets(): List<Int> = storedPresets().sorted()
+
+    private fun savePresets(presets: List<Int>) {
+        prefs.edit { putString(KEY_PRESETS, presets.joinToString(",")) }
+        _presets.value = presets.sorted()
+    }
+
     private fun save(rest: RestState?) {
         prefs.edit {
             if (rest == null) {
@@ -92,6 +117,9 @@ class RestTimer(private val context: Context, private val prefs: SharedPreferenc
         const val REQUEST_CODE = 7_001
         const val KEY_ENDS_AT = "rest_ends_at"
         const val KEY_TOTAL = "rest_total_seconds"
+        const val KEY_PRESETS = "rest_presets"
+        const val MAX_PRESETS = 6
+        val DEFAULT_PRESETS = listOf(60, 90, 120, 180)
     }
 }
 

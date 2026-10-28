@@ -49,8 +49,21 @@ val WORKOUT_PRESETS: List<Pair<String, List<String>>> = listOf(
     "Full body A / B" to listOf("Full body A", "Full body B"),
 )
 
-/** Długości przerwy do szybkiego wyboru (sekundy). */
-val REST_PRESETS: List<Int> = listOf(60, 90, 120, 180)
+/** Najkrótsza i najdłuższa przerwa do ustawienia w okienku „Własny czas” (sekundy). */
+const val REST_MIN_SECONDS = 5
+const val REST_MAX_SECONDS = 60 * 60
+
+/** Czas z okienka „Własny czas” (puste pole = 0) albo null, gdy poza zakresem. */
+fun parseRestTime(minutes: String, seconds: String): Int? {
+    val m = if (minutes.isBlank()) 0 else minutes.toIntOrNull() ?: return null
+    val s = if (seconds.isBlank()) 0 else seconds.toIntOrNull() ?: return null
+    if (s > 59) return null
+    return (m * 60 + s).takeIf { it in REST_MIN_SECONDS..REST_MAX_SECONDS }
+}
+
+/** Podpowiedź pod polami okienka „Własny czas”. */
+fun restTimeHint(total: Int?): String =
+    if (total == null) "Od 5 s do 60 min, sekundy 0–59" else "Ten czas zostanie też w szybkim wyborze"
 
 /** Karta "Przypomnienie o treningu": ustawienia i najbliższy termin. */
 data class TrainingUi(
@@ -91,6 +104,17 @@ class WorkoutViewModel(
     val rest: StateFlow<RestState?> = restTimer.state
 
     fun startRest(seconds: Int) = restTimer.start(seconds)
+
+    /** Czasy przerwy do szybkiego wyboru (sekundy, rosnąco). */
+    val restPresets: StateFlow<List<Int>> = restTimer.presets
+
+    /** Start przerwy o własnej długości – ten czas zostaje też w szybkim wyborze. */
+    fun startCustomRest(seconds: Int) {
+        restTimer.addPreset(seconds)
+        restTimer.start(seconds)
+    }
+
+    fun removeRestPreset(seconds: Int) = restTimer.removePreset(seconds)
 
     fun extendRest(seconds: Int) = restTimer.extend(seconds)
 
